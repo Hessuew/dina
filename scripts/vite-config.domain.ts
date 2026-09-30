@@ -45,6 +45,12 @@ export type SentryBuildConfig = {
   release?: { name: string }
 }
 
+export function shouldEmitSourceMaps(
+  values: Partial<Record<string, string>>,
+): boolean {
+  return values.RELEASE_SOURCE_MAPS_ENABLED?.trim() === 'true'
+}
+
 export function resolveSentryBuildConfig(
   values: Partial<Record<string, string>>,
 ): SentryBuildConfig | null {

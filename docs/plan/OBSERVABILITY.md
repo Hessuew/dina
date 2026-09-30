@@ -83,7 +83,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)
   - Traces enabled (1% sampling)
-  - Workers deployment via `wrangler deploy`
+  - Local/manual deployment via `wrangler deploy`; production releases use
+    `wrangler versions upload` followed by explicit `wrangler versions deploy`
+    after exact-version smoke and readiness checks
 - **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
 - **PostHog foundation:** optional browser-only initialization is wired from the
   root route with stable user-ID/role identification. Enrollment, assignment

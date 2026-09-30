@@ -36,7 +36,7 @@ bun db:migrate
 ## Hosted migration safety
 
 `bun db:push` is a development-only escape hatch for a disposable database. Do
-not use it against the hosted Supabase `development` or production branches:
+not use it against the hosted Supabase `development` or production environments:
 it bypasses the committed migration history and can make the environments
 drift.
 
@@ -44,8 +44,10 @@ For a hosted schema change, follow
 [`docs/plan/SAFE_DELIVERY.md`](../docs/plan/SAFE_DELIVERY.md): generate a new
 versioned migration, replay the real journal with `bun run test:integration`,
 merge through the green main release gate, exercise the hosted development
-branch, and promote the same reviewed commit to production. The GitHub
-workflows run `bun db:migrate`; production is never seeded.
+branch, and promote the same validated SHA through
+`.github/workflows/production-release.yml`. The workflow creates an immutable
+`vYYYY.MM.DD.N` tag, applies `bun db:migrate` to production without seeding,
+then uploads and promotes the matching Cloudflare Worker version.
 
 ## Creating New Migrations
 
@@ -97,9 +99,10 @@ PGlite. DINA does not run a local Supabase instance.
 ### Hosted environments
 
 Merge the migration to GitHub `main` to apply it to the hosted Supabase `development` branch.
-After testing the localhost app against that branch, promote the same commit to the protected
-GitHub `production` branch. See [`../docs/SUPABASE_ENVIRONMENTS.md`](../docs/SUPABASE_ENVIRONMENTS.md)
-and the [safe-delivery procedure](../docs/plan/SAFE_DELIVERY.md).
+After testing the localhost app against that branch, promote the same validated
+SHA through `.github/workflows/production-release.yml`. See
+[`../docs/SUPABASE_ENVIRONMENTS.md`](../docs/SUPABASE_ENVIRONMENTS.md) and the
+[safe-delivery procedure](../docs/plan/SAFE_DELIVERY.md).
 
 ## Rollback
 

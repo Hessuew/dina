@@ -1,18 +1,18 @@
 # Safe Delivery and Migration Operations
 
-**Status:** Verified — repository procedure, hosted migration rehearsal, and post-migration health smoke passed
+**Status:** Implemented — repository workflow is fail-closed pending external production readiness
 **Phase:** Engineering Roadmap Phase 3: Safe delivery  
 **Owner:** Engineering
 
-### Verification — 2026-09-28
+### Verification — 2026-09-29
 
-The pull-request quality gate, serialized main release gate, hosted development
-migration plus idempotent synthetic seed, and production migration workflow all
-passed. The production migration validated the Drizzle chain, required the
-latest green main release gate, and applied the pending additive migration.
-The public production origin then passed both `/healthz` and `/readyz`.
-`wrangler deploy --dry-run` also validates the current Worker build and bindings;
-an actual Cloudflare deployment remains a separate operational action.
+The pull-request quality gate and serialized main release gate remain the only
+code-validation gates. The production workflow now promotes an exact validated
+main SHA under a new immutable UTC tag; it does not use a long-lived
+`production` branch. Production promotion is deliberately disabled until the
+external readiness checklist is verified. The repository workflow, policy unit
+tests, and Wrangler configuration are locally verifiable; no production
+mutation is claimed by this document.
 
 ## Goal
 
@@ -36,13 +36,36 @@ account URLs remain external configuration and must never be committed.
   `development` branch. The workflow can also be dispatched manually with
   `run_development_migration=true` to retry that dependent job after a
   reviewed main release without creating a no-op migration.
-- A push to the protected `production` branch that includes `drizzle/**` runs
-  `.github/workflows/migrate-production.yml`. It validates the migration chain,
-  requires the latest green main release gate, and applies pending migrations
-  without seeding production.
-- The application deployment command is `bun run deploy` (`vite build` then
-  `wrangler deploy`). Run it only with the intended Cloudflare account and
-  environment configuration.
+- `.github/workflows/production-release.yml` is triggered by a successful
+  `Main release gate` on `main`, or manually with a full `target_sha` and
+  `standard`/`gradual` profile. It creates a never-reused tag such as
+  `v2026.09.29.1`, obtains the protected `production` environment approval,
+  replays and applies production migrations without seeding, then uploads an
+  undeployed Worker version.
+- The release workflow smoke-tests the uploaded version through
+  `Cloudflare-Workers-Version-Overrides`, runs the affected public journey
+  check, and promotes with Wrangler. Failed health or rollout guardrails
+  automatically deploy the recorded previous version at 100% and re-run health
+  smoke. The workflow never down-migrates Supabase.
+- After promotion, a protected release-evidence adapter must confirm the
+  release tag/SHA/Worker version, source-map correlation, and alert delivery to
+  Slack `#incidents` plus the documented email fallback. Missing or incomplete
+  evidence fails closed and triggers the same Worker rollback path.
+- Tagged builds inject the release tag into browser/Worker observability and
+  use the Sentry-compatible Vite source-map upload configuration. The workflow
+  registers the release with Better Stack, verifies that source-map artifacts
+  are queryable, and injects the exact target SHA/origin into the uploaded
+  Worker version. It publishes a GitHub Release containing the previous release, merged PRs,
+  commits, migration files, Cloudflare version, rollout result, and rollback
+  target.
+- The Worker issues the non-sensitive `dina-version-key` cookie on the first
+  response. The `christ-dina.org` zone must have a Request Header Transform
+  Rule matching `http.cookie contains "dina-version-key"` and dynamically
+  setting `Cloudflare-Workers-Version-Key` to
+  `http.request.cookies["dina-version-key"][0]`.
+- `bun run deploy` remains a local/manual full deployment command. The
+  production workflow uses `wrangler versions upload` plus explicit
+  `wrangler versions deploy` so upload and serving stay separate.
 - The repository integration harness replays the committed Drizzle migration
   journal against PGlite. It is the fast migration-chain check, not proof that
   a hosted restore or provider migration has succeeded.
@@ -67,15 +90,41 @@ account URLs remain external configuration and must never be committed.
 
 ## Required promotion order
 
+## Main and immutable release workflow
+
+`main` is the only long-lived code branch. A production release is identified by
+both the exact validated commit SHA and its immutable tag:
+
+```text
+successful Main release gate → production environment approval
+  → compatible Supabase migration → tagged build/source maps
+  → undeployed Worker version → exact-version smoke
+  → standard 100% or gradual 10% → 25% → 50% → 100%
+  → health/alert/evidence checks → GitHub Release
+```
+
+The workflow records the active Cloudflare version before upload as the rollback
+target. Failed tags remain in Git history for audit and the next tag sequence
+never reuses them. Manual dispatch is allowed only for a full SHA that has a
+successful `Main release gate` run and is reachable from `origin/main`.
+
+Standard and gradual promotion are fail-closed unless the configured per-version
+metrics adapter returns request count, error count, p95 latency, and new
+release-correlated high-severity issue count for the exact query window. The
+standard profile serves 100%, observes a five-minute window, and applies the
+same guardrails before the live-traffic smoke and release evidence steps. Each
+gradual stage waits at least ten minutes and requires at least 20 new-version
+requests. If the 10% stage is below that floor, the workflow promotes directly
+to 100% after guardrails pass.
+
 ### Application-only change
 
 1. Open a pull request and wait for the pull-request quality gate.
 2. Merge to `main` and wait for the serialized main release gate.
-3. Deploy the reviewed commit with the normal Cloudflare deployment path.
-4. Run the post-deploy health workflow with the deployment origin, or run
-   `bun run smoke:health -- https://<deployment-origin>` in the deployment
-   shell, then run the affected journey smoke checks in the observability
-   runbook.
+3. Allow the automatic standard promotion, or manually dispatch the production
+   workflow for the same validated SHA once the protected release-readiness
+   controls are enabled.
+4. Confirm the tagged version override smoke and affected journey smoke pass.
 5. Watch Better Stack Errors, Logs & Traces, Uptime, and Cloudflare for the
    first release window. Record the release and environment when investigating
    a regression.
@@ -94,19 +143,15 @@ account URLs remain external configuration and must never be committed.
 5. Exercise the changed application against the hosted `development` branch.
    Verify the migration, affected authenticated read/write path, and any
    Storage/Auth behavior using synthetic data only.
-6. Promote the same reviewed commit to the protected `production` branch.
-   Confirm the production migration workflow applies the same migration chain
-   successfully; do not run a second hand-written SQL variant.
-7. Deploy the application after the production schema is ready, unless the
-   expand/contract plan explicitly requires a backward-compatible application
-   deploy before the migration. The old and new application versions must both
-   work with the intermediate schema.
-8. Run the post-deploy health workflow against the production origin (or the
-   equivalent local command) and the affected journey smoke checks. Confirm
-   production `/healthz` and `/readyz` are both healthy before closing the
-   rollout.
-   Confirm the new release is visible in Better Stack with symbolicated source
-   maps before closing the rollout.
+6. Promote that exact SHA through `.github/workflows/production-release.yml`.
+   The protected `production` environment gates the migration; production is
+   never seeded and no second SQL variant is created.
+7. Deploy the Worker only after the compatible production schema is ready,
+   unless the expand/contract plan explicitly requires an earlier compatible
+   application version.
+8. Confirm the GitHub Release, tag/SHA, migration evidence, Cloudflare version,
+   health payload/header, source maps, alert checks, and rollback target before
+   closing the rollout.
 
 If a migration changes a critical table, attach the relevant backup/restore
 evidence or an approved restore rehearsal reference to the release record. Do
@@ -140,6 +185,7 @@ application idempotency.
 | Failure                                         | First action                                                                                      | Database action                                                                                         |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Cloudflare application regression               | Redeploy the last known-good Worker version and run smoke checks                                  | None if the schema is backward-compatible                                                               |
+| Health or rollout guardrail failure             | Let the release workflow deploy its recorded previous Worker version and re-run smoke             | None                                                                                                    |
 | Better Stack/source-map or telemetry regression | Keep Cloudflare retention enabled, restore the previous DSN/configuration if needed, and redeploy | None                                                                                                    |
 | Migration rejected before applying              | Stop the promotion and inspect the provider migration error                                       | Correct the migration in a new commit; do not edit the failed file until its hosted state is understood |
 | Migration applied and code is incompatible      | Roll forward with a compatibility fix or use an already-tested compatible application version     | Do not guess a down migration                                                                           |
@@ -155,12 +201,15 @@ data-loss, downtime, and Storage/Auth implications.
 Before marking a migration release complete, record pass/fail references for:
 
 - pull-request quality gate and main release gate;
-- the exact migration filename and commit promoted to both environments;
+- the immutable release tag and exact SHA promoted to both environments;
 - hosted development migration and synthetic seed;
 - development smoke checks for `/healthz`, `/readyz`, and the affected path;
 - production migration workflow and production smoke checks;
 - Better Stack release/environment/source-map verification;
-- Cloudflare deployment version and rollback target; and
+- Cloudflare version, version-override smoke, rollout result, and rollback target;
+- alert delivery to Slack `#incidents` plus the documented email fallback;
+- release-evidence confirmation for the exact tag, SHA, Worker version, and
+  source-map correlation;
 - follow-up owner/date for any deferred contract cleanup.
 
 Keep the evidence in the team's normal launch or operations record. Never paste
@@ -172,12 +221,24 @@ messages into repository or Notion documentation.
 The following are intentionally not automated by this repository and must be
 completed in the external systems before Phase 3 is considered operational:
 
-- protect the `production` branch and require the green main release gate;
-- require approval for the GitHub `production` environment;
-- confirm the Cloudflare deployment points at the intended Worker/account;
-- run or wire the post-deploy health workflow against the deployment origin;
-- configure Better Stack release/source-map verification and rollback alerts;
-- rehearse one application rollback and one migration incident response; and
+- protect `main` with pull request, quality-gate, and no-force-push rules;
+- configure the `production` environment with a five-minute wait timer and sole
+  contributor self-approval;
+- create least-privilege `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID` credentials and retain runtime secrets in Cloudflare;
+- configure Cloudflare version URLs, the `dina-version-key` version-affinity
+  transform rule, custom domain, and Hyperdrive binding;
+- record the Cloudflare affinity transform and split-version asset evidence at
+  the protected `CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL`, then set
+  `CLOUDFLARE_VERSION_AFFINITY_READY=true`;
+- configure Better Stack and Cloudflare alerts to Slack `#incidents` plus the
+  documented email fallback;
+- configure the protected release-evidence adapter consumed by
+  `bun run scripts/release-evidence.ts`;
+- activate `/healthz` and `/readyz` monitors and verify source-map correlation;
+- query Cloudflare per-version rollout metrics or keep production dispatch
+  manual/fail-closed;
+- rehearse Worker rollback and isolated Supabase restore; and
 - link the current release, dashboard, and runbook URLs from Notion.
 
 ## Related procedures
