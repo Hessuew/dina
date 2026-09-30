@@ -15,6 +15,7 @@ type ParsedWorkflow = {
   deployEnvironment: string | undefined
   trustedReleaseUses: string | undefined
   tagProtectionUses: string | undefined
+  manualTargetVerificationUses: string | undefined
   preflightEnv: Record<string, string> | undefined
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
@@ -105,6 +106,9 @@ describe('production release workflow', () => {
 
     expect(workflow.trustedReleaseUses).toBe('actions/github-script@v7')
     expect(workflow.tagProtectionUses).toBe('actions/github-script@v7')
+    expect(workflow.manualTargetVerificationUses).toBe(
+      'actions/github-script@v7',
+    )
     expect(workflow.preflightEnv?.TRUSTED_RELEASE_BINDINGS).toBe(
       '${{ steps.trusted_releases.outputs.bindings }}',
     )
@@ -181,6 +185,9 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const tagProtection = workflow.jobs.resolve.steps.find(
       (step) => step.name === 'Verify immutable v* tag protection',
     )
+    const manualTargetVerification = workflow.jobs.resolve.steps.find(
+      (step) => step.name === 'Verify manual target is current or previously trusted',
+    )
     const preflight = workflow.jobs.deploy.steps.find(
       (step) => step.id === 'preflight',
     )
@@ -212,6 +219,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       deployEnvironment: workflow.jobs.deploy.environment,
       trustedReleaseUses: trustedReleases?.uses,
       tagProtectionUses: tagProtection?.uses,
+      manualTargetVerificationUses: manualTargetVerification?.uses,
       preflightEnv: preflight?.env,
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,

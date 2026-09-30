@@ -197,6 +197,28 @@ describe('selectRollbackTarget', () => {
     ).toThrow(/release identity was not verified/iu)
   })
 
+  it('rejects an active target whose historical release tag is stale', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'stale-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'stale-version',
+          annotations: {
+            'workers/tag': 'v2026.09.29.1',
+            'workers/message': `DINA v2026.09.29.1 (${verifiedReleaseCommit})`,
+          },
+        },
+        legacyVersionIds: [],
+        verifiedReleaseBindings: {},
+      }),
+    ).toThrow(/release identity was not verified/iu)
+  })
+
   it('rejects a manual upload that reuses a verified release tag', () => {
     expect(() =>
       selectRollbackTargetInfo({

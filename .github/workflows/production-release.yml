@@ -140,6 +140,42 @@ jobs:
             if (!validated) {
               core.setFailed(`No successful Main release gate found for ${targetSha}.`)
             }
+      - name: Verify manual target is current or previously trusted
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const {
+              isSupportedManualPromotionTarget,
+              loadTrustedReleaseBindings,
+            } = require(
+              `${process.cwd()}/scripts/trusted-release.cjs`,
+            )
+            const targetSha = process.env.TARGET_SHA.trim().toLowerCase()
+            const currentMain = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            })
+            const currentMainSha = currentMain.data.commit.sha
+            let bindings = {}
+            if (targetSha !== currentMainSha.trim().toLowerCase()) {
+              bindings = await loadTrustedReleaseBindings(github, context.repo)
+            }
+            if (
+              !isSupportedManualPromotionTarget(
+                targetSha,
+                currentMainSha,
+                bindings,
+              )
+            ) {
+              throw new Error(
+                'Manual target must be the current main commit or a trusted production release commit.',
+              )
+            }
       - id: identity
         name: Create immutable dated release tag
         env:
@@ -244,77 +280,10 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const { isReleaseTag, parseTrustedReleaseBinding } = require(
-              `${process.cwd()}/scripts/release-record.cjs`,
+            const { loadTrustedReleaseBindings } = require(
+              `${process.cwd()}/scripts/trusted-release.cjs`,
             )
-            const { owner, repo } = context.repo
-            const releases = await github.paginate(github.rest.repos.listReleases, {
-              owner,
-              repo,
-              per_page: 100,
-            })
-            const [mainGateRuns, productionRuns] = await Promise.all([
-              github.paginate(github.rest.actions.listWorkflowRuns, {
-                owner,
-                repo,
-                workflow_id: 'main-release.yml',
-                branch: 'main',
-                status: 'completed',
-                per_page: 100,
-              }),
-              github.paginate(github.rest.actions.listWorkflowRuns, {
-                owner,
-                repo,
-                workflow_id: 'production-release.yml',
-                branch: 'main',
-                status: 'completed',
-                per_page: 100,
-              }),
-            ])
-            const releaseTags = new Set(
-              releases.filter((release) => isReleaseTag(release.tag_name)).map(
-                (release) => release.tag_name,
-              ),
-            )
-            const deployments = await github.paginate(
-              github.rest.repos.listDeployments,
-              { owner, repo, environment: 'production', per_page: 100 },
-            )
-            const deploymentRecords = await Promise.all(
-              deployments
-                .filter((deployment) => releaseTags.has(deployment.ref))
-                .map(async (deployment) => ({
-                  ...deployment,
-                  statuses: await github.paginate(
-                    github.rest.repos.listDeploymentStatuses,
-                    {
-                      owner,
-                      repo,
-                      deployment_id: deployment.id,
-                      per_page: 100,
-                    },
-                  ),
-                })),
-            )
-            const bindings = {}
-            for (const release of releases) {
-              if (!isReleaseTag(release.tag_name)) continue
-              const tagCommit = await github.rest.repos.getCommit({
-                owner,
-                repo,
-                ref: release.tag_name,
-              })
-              const binding = parseTrustedReleaseBinding(
-                release,
-                tagCommit.data.sha,
-                {
-                  mainGateRuns,
-                  productionRuns,
-                  deployments: deploymentRecords,
-                },
-              )
-              if (binding) bindings[release.tag_name] = binding
-            }
+            const bindings = await loadTrustedReleaseBindings(github, context.repo)
             core.setOutput('bindings', JSON.stringify(bindings))
       - id: preflight
         name: Record the current rollback target
@@ -543,7 +512,9 @@ jobs:
             const { selectTrustedPreviousRelease } = require(
               `${process.cwd()}/scripts/release-record.cjs`,
             )
-            const previousReleaseTag = process.env.PREVIOUS_RELEASE_TAG.trim()
+            const previousReleaseTag = (
+              process.env.PREVIOUS_RELEASE_TAG ?? ''
+            ).trim()
             const releases = previousReleaseTag
               ? await github.paginate(github.rest.repos.listReleases, {
                   owner,
