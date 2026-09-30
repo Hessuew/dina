@@ -245,6 +245,14 @@ jobs:
           fi
       - id: upload
         name: Upload an undeployed Cloudflare Worker version
+        env:
+          RELEASE_SHA: ${{ env.TARGET_SHA }}
+          RELEASE_ORIGIN: ${{ env.PRODUCTION_ORIGIN }}
+          RELEASE_SOURCE_MAPS_VERIFIED: 'true'
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          BETTER_STACK_APPLICATION_ID: ${{ env.BETTER_STACK_APPLICATION_ID }}
+          RELEASE_ALERTS_SLACK_INCIDENTS: ${{ env.RELEASE_ALERTS_SLACK_INCIDENTS }}
+          RELEASE_ALERTS_EMAIL_FALLBACK: ${{ env.RELEASE_ALERTS_EMAIL_FALLBACK }}
         run: |
           if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
             echo "CLOUDFLARE_ACCOUNT_ID is not configured"
@@ -257,9 +265,9 @@ jobs:
             --tag "$RELEASE_TAG" \
             --message "DINA $RELEASE_TAG ($TARGET_SHA)" \
             --upload-source-maps \
-            --var "RELEASE_SHA:$TARGET_SHA" \
-            --var "RELEASE_ORIGIN:$PRODUCTION_ORIGIN" \
-            --var "RELEASE_SOURCE_MAPS_VERIFIED:true" \
+            --var "RELEASE_SHA:$RELEASE_SHA" \
+            --var "RELEASE_ORIGIN:$RELEASE_ORIGIN" \
+            --var "RELEASE_SOURCE_MAPS_VERIFIED:$RELEASE_SOURCE_MAPS_VERIFIED" \
             --var "CLOUDFLARE_ACCOUNT_ID:$CLOUDFLARE_ACCOUNT_ID" \
             --var "BETTER_STACK_APPLICATION_ID:$BETTER_STACK_APPLICATION_ID" \
             --var "RELEASE_ALERTS_SLACK_INCIDENTS:$RELEASE_ALERTS_SLACK_INCIDENTS" \
@@ -367,7 +375,7 @@ jobs:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
           SMOKE_EXPECTED_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
-        run: bun run smoke:health
+        run: bun run scripts/retry-release-smoke.ts health
       - name: Verify alert routing and release evidence
         env:
           CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
@@ -418,11 +426,19 @@ jobs:
               per_page: 20,
             })
             const previousRelease = releases.find((release) => !release.draft)
-            const compare = previousRelease
+            const targetCommit = previousRelease
+              ? null
+              : await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: targetSha,
+                })
+            const compareBase = previousRelease?.tag_name ?? targetCommit?.data.parents[0]?.sha
+            const compare = compareBase
               ? await github.rest.repos.compareCommits({
                   owner,
                   repo,
-                  base: previousRelease.tag_name,
+                  base: compareBase,
                   head: targetSha,
                 })
               : null
