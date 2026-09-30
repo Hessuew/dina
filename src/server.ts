@@ -30,6 +30,9 @@ const appHandler = {
     const runtime = workerEnv as unknown as Parameters<
       typeof handleReleaseEndpoint
     >[1]
+    const assetRuntime = workerEnv as unknown as Parameters<
+      typeof fetchWithAssetFallback
+    >[1]
     const releaseResponse = await handleReleaseEndpoint(
       request,
       runtime,
@@ -45,7 +48,7 @@ const appHandler = {
       async () => {
         const operationalResponse = await handleOperationalRequest(request)
         if (operationalResponse) return operationalResponse
-        return fetchWithAssetFallback(request, runtime, () =>
+        return fetchWithAssetFallback(request, assetRuntime, async () =>
           handler.fetch(request, opts as HandlerOptions),
         )
       },
