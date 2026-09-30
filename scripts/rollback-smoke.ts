@@ -6,6 +6,10 @@ import {
 } from './health-smoke.domain'
 import { resolveHealthSmokeHeaders } from './health-smoke.version.domain'
 import { validateRollbackSmokeResponse } from './rollback-smoke.domain'
+import type {
+  RollbackSmokeMode,
+  RollbackSmokeValidation,
+} from './rollback-smoke.domain'
 
 const baseUrl = resolveHealthSmokeUrl(process.env.SMOKE_BASE_URL)
 const versionId = requiredEnv('SMOKE_VERSION_ID')
@@ -14,32 +18,7 @@ const expectedRelease = process.env.SMOKE_EXPECTED_RELEASE?.trim()
 const legacyTarget = resolveLegacyTarget(process.env.SMOKE_LEGACY_TARGET)
 const headers = resolveHealthSmokeHeaders(versionId, workerName)
 
-const modes = await Promise.all(
-  HEALTH_SMOKE_PATHS.map(async (path) => {
-    const endpointUrl = new URL(path, baseUrl)
-    const response = await fetchWithTimeout(endpointUrl, {
-      headers,
-      redirect: 'manual',
-    })
-    const originFailure = validateSmokeResponseOrigin(response, endpointUrl)
-    if (originFailure) throw new Error(`${path}: ${originFailure}`)
-    const payload = await readJson(response)
-    const validation = validateRollbackSmokeResponse(
-      path,
-      response.status,
-      payload,
-      versionId,
-      expectedRelease,
-      response.headers.get('x-dina-worker-version'),
-      response.headers.get('x-dina-worker-version-tag'),
-      legacyTarget,
-    )
-    if (validation.failure || !validation.mode) {
-      throw new Error(`${path}: ${validation.failure ?? 'unknown failure'}`)
-    }
-    return validation.mode
-  }),
-)
+const modes = await Promise.all(HEALTH_SMOKE_PATHS.map(runSmokePath))
 
 const mode = modes[0]
 if (modes.some((candidate) => candidate !== mode)) {
@@ -48,6 +27,46 @@ if (modes.some((candidate) => candidate !== mode)) {
   )
 }
 console.log(`rollback smoke passed: ${mode}`)
+
+async function runSmokePath(path: string): Promise<RollbackSmokeMode> {
+  const endpointUrl = new URL(path, baseUrl)
+  const response = await fetchWithTimeout(endpointUrl, {
+    headers,
+    redirect: 'manual',
+  })
+  assertSmokeResponseOrigin(response, endpointUrl, path)
+  const payload = await readJson(response)
+  const validation = validateRollbackSmokeResponse(
+    path,
+    response.status,
+    payload,
+    versionId,
+    expectedRelease,
+    response.headers.get('x-dina-worker-version'),
+    response.headers.get('x-dina-worker-version-tag'),
+    legacyTarget,
+  )
+  return requireRollbackSmokeMode(validation, path)
+}
+
+function assertSmokeResponseOrigin(
+  response: Response,
+  endpointUrl: URL,
+  path: string,
+): void {
+  const originFailure = validateSmokeResponseOrigin(response, endpointUrl)
+  if (originFailure) throw new Error(`${path}: ${originFailure}`)
+}
+
+function requireRollbackSmokeMode(
+  validation: RollbackSmokeValidation,
+  path: string,
+): RollbackSmokeMode {
+  if (validation.failure || !validation.mode) {
+    throw new Error(`${path}: ${validation.failure ?? 'unknown failure'}`)
+  }
+  return validation.mode
+}
 
 async function readJson(response: Response): Promise<unknown> {
   try {

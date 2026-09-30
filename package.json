@@ -7,6 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "smoke:health": "bun run scripts/health-smoke.ts",
+    "smoke:rollback": "bun run scripts/rollback-smoke.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",

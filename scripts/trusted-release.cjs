@@ -3,74 +3,6 @@ const {
   parseTrustedReleaseBinding,
 } = require('./release-record.cjs')
 
-async function loadTrustedReleaseBindings(github, { owner, repo }) {
-  const releases = await github.paginate(github.rest.repos.listReleases, {
-    owner,
-    repo,
-    per_page: 100,
-  })
-  const [mainGateRuns, productionRuns] = await Promise.all([
-    github.paginate(github.rest.actions.listWorkflowRuns, {
-      owner,
-      repo,
-      workflow_id: 'main-release.yml',
-      branch: 'main',
-      status: 'completed',
-      per_page: 100,
-    }),
-    github.paginate(github.rest.actions.listWorkflowRuns, {
-      owner,
-      repo,
-      workflow_id: 'production-release.yml',
-      branch: 'main',
-      status: 'completed',
-      per_page: 100,
-    }),
-  ])
-  const releaseTags = new Set(
-    releases
-      .filter((release) => isReleaseTag(release.tag_name))
-      .map((release) => release.tag_name),
-  )
-  const deployments = await github.paginate(github.rest.repos.listDeployments, {
-    owner,
-    repo,
-    environment: 'production',
-    per_page: 100,
-  })
-  const deploymentRecords = await Promise.all(
-    deployments
-      .filter((deployment) => releaseTags.has(deployment.ref))
-      .map(async (deployment) => ({
-        ...deployment,
-        statuses: await github.paginate(
-          github.rest.repos.listDeploymentStatuses,
-          {
-            owner,
-            repo,
-            deployment_id: deployment.id,
-            per_page: 100,
-          },
-        ),
-      })),
-  )
-
-  return collectTrustedReleaseBindings({
-    releases,
-    mainGateRuns,
-    productionRuns,
-    deployments: deploymentRecords,
-    getTagCommit: async (tag) => {
-      const response = await github.rest.repos.getCommit({
-        owner,
-        repo,
-        ref: tag,
-      })
-      return response.data.sha
-    },
-  })
-}
-
 async function collectTrustedReleaseBindings({
   releases,
   mainGateRuns,
@@ -116,5 +48,4 @@ function normalizeSha(value) {
 module.exports = {
   collectTrustedReleaseBindings,
   isSupportedManualPromotionTarget,
-  loadTrustedReleaseBindings,
 }
