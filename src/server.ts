@@ -11,23 +11,17 @@ import {
 } from '@/utils/health'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
-import {
-  buildVersionAffinityCookie,
-  hasVersionAffinityCookie,
-} from '@/utils/observability/domain/version-affinity.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
 import {
   handleReleaseEndpoint,
   recordReleaseMetric,
 } from '@/utils/observability/release-endpoints'
+import {
+  addWorkerVersionHeaders,
+  readWorkerVersionMetadata,
+} from '@/utils/observability/version-headers'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
-
-type WorkerVersionMetadata = {
-  id: string
-  tag: string
-  timestamp: string
-}
 
 const appHandler = {
   async fetch(request: Request, opts?: unknown): Promise<Response> {
@@ -57,47 +51,6 @@ const appHandler = {
     )
     return addWorkerVersionHeaders(response, opts, request)
   },
-}
-
-function addWorkerVersionHeaders(
-  response: Response,
-  options: unknown,
-  request: Request,
-): Response {
-  const metadata = readWorkerVersionMetadata(options)
-  if (metadata) {
-    response.headers.set('x-dina-worker-version', metadata.id)
-    response.headers.set('x-dina-worker-version-tag', metadata.tag)
-  }
-
-  if (!hasVersionAffinityCookie(request.headers.get('Cookie'))) {
-    response.headers.append(
-      'Set-Cookie',
-      buildVersionAffinityCookie(crypto.randomUUID()),
-    )
-  }
-
-  return response
-}
-
-function readWorkerVersionMetadata(
-  value: unknown,
-): WorkerVersionMetadata | null {
-  if (!isRecord(value)) return null
-  return isWorkerVersionMetadata(value.WORKER_VERSION)
-    ? value.WORKER_VERSION
-    : null
-}
-
-function isWorkerVersionMetadata(
-  value: unknown,
-): value is WorkerVersionMetadata {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.tag === 'string' &&
-    typeof value.timestamp === 'string'
-  )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
