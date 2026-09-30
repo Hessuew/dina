@@ -20,6 +20,11 @@ describe('version affinity cookie helpers', () => {
     expect(hasVersionAffinityCookie('dina-version-key-extra=value')).toBe(false)
     expect(hasVersionAffinityCookie('dina-version-key=')).toBe(false)
     expect(hasVersionAffinityCookie('dina-version-key= ')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key="')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key=a,b')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key=abc def')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key=abc\\def')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key=stable-key ')).toBe(false)
     expect(hasVersionAffinityCookie(null)).toBe(false)
   })
 
