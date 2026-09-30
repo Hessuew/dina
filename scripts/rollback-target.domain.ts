@@ -19,6 +19,7 @@ type VersionMetadata = {
 export type RollbackTarget = {
   versionId: string
   legacyCompatible: boolean
+  releaseTag: string | null
 }
 
 export function selectRollbackTarget(value: unknown): string {
@@ -88,9 +89,11 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
 
   const tag = readAnnotation(version.annotations?.['workers/tag'])
   const message = readAnnotation(version.annotations?.['workers/message'])
-  if (tag && message) return { versionId, legacyCompatible: false }
+  if (tag && message) {
+    return { versionId, legacyCompatible: false, releaseTag: tag }
+  }
   if (!tag && !message && legacyVersionIds.has(versionId)) {
-    return { versionId, legacyCompatible: true }
+    return { versionId, legacyCompatible: true, releaseTag: null }
   }
   if (!tag && !message) {
     throw new Error('Rollback target lacks explicit legacy verification')

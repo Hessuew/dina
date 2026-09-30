@@ -95,7 +95,11 @@ describe('selectRollbackTarget', () => {
         version: { id: 'legacy-version' },
         legacyVersionIds: ['legacy-version'],
       }),
-    ).toEqual({ versionId: 'legacy-version', legacyCompatible: true })
+    ).toEqual({
+      versionId: 'legacy-version',
+      legacyCompatible: true,
+      releaseTag: null,
+    })
   })
 
   it('requires complete release annotations for non-legacy targets', () => {
@@ -134,7 +138,11 @@ describe('selectRollbackTarget', () => {
         },
         legacyVersionIds: [],
       }),
-    ).toEqual({ versionId: 'release-version', legacyCompatible: false })
+    ).toEqual({
+      versionId: 'release-version',
+      legacyCompatible: false,
+      releaseTag: 'v2026.09.30.1',
+    })
   })
 
   it('rejects metadata for a different selected version', () => {

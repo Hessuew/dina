@@ -9,7 +9,7 @@ import { validateRollbackSmokeResponse } from './rollback-smoke.domain'
 const baseUrl = resolveHealthSmokeUrl(process.env.SMOKE_BASE_URL)
 const versionId = requiredEnv('SMOKE_VERSION_ID')
 const workerName = requiredEnv('SMOKE_WORKER_NAME')
-const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
+const expectedRelease = process.env.SMOKE_EXPECTED_RELEASE?.trim()
 const legacyTarget = resolveLegacyTarget(process.env.SMOKE_LEGACY_TARGET)
 const headers = resolveHealthSmokeHeaders(versionId, workerName)
 

@@ -86,7 +86,8 @@ describe('production release workflow', () => {
       SMOKE_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
       SMOKE_WORKER_NAME: '${{ env.WORKER_NAME }}',
       SMOKE_LEGACY_TARGET: '${{ steps.preflight.outputs.legacy_compatible }}',
-      SMOKE_EXPECTED_RELEASE: '${{ env.RELEASE_TAG }}',
+      SMOKE_EXPECTED_RELEASE:
+        '${{ steps.preflight.outputs.previous_release_tag }}',
     })
   })
 
