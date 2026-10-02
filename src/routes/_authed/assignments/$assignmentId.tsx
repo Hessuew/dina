@@ -159,6 +159,7 @@ function useAssignmentDetail() {
     role,
     status: assignment.status,
     dueDate: assignment.dueDate,
+    submission,
   })
   const showSubmissionsPanel =
     isStudent || shouldLoadAssignmentSubmissions(permissions.canManage)

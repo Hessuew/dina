@@ -45,6 +45,8 @@ Database access layer and schema definitions.
     - `submissions`
       - Stores text answers and grading data; no attachment or URL field.
       - Enforces one row per `(assignment_id, student_id)`; assignment saves use conflict-safe upsert behavior.
+      - Rows past `draft` (`submitted`/`graded`/`returned`) are immutable for
+        students; the service rejects further writes with `CONFLICT`.
       - Student-scoped assignment and grading reads use the additive
         `submissions_student_id_idx` index from migration `0052_chief_the_fallen`.
     - `media_library`
@@ -95,9 +97,9 @@ Database access layer and schema definitions.
       - Lesson completion is derived from `assignments` × `submissions`
         (grade non-null), not stored — `lesson_progress` was dropped in
         migration `0058_hesitant_spencer_smythe` (ADR 0024).
-      - Student assignment lists filter published rows and order by due date;
-        the Phase 4 performance migration `0057_thin_mandrill` adds
-        `assignments_status_due_date_idx`.
+      - Student assignment lists filter `published` and `closed` rows
+        (read-only) and order by due date; the Phase 4 performance migration
+        `0057_thin_mandrill` adds `assignments_status_due_date_idx`.
     - `attendance_sessions`
       - Student open-session reads filter by `closes_at` and order by recent
         `opened_at`; the Phase 4 performance migration
@@ -106,6 +108,8 @@ Database access layer and schema definitions.
       - Teacher grading reads filter by `exam_id` and order by the earliest
         `started_at`; the Phase 4 performance migration
         `0055_motionless_jazinda` adds `exam_attempts_exam_started_at_idx`.
+      - `feedback` stores overall grader feedback written at finalize time;
+        it stays redacted from students until the attempt is `graded`.
     - `course_teachers`
       - Course-team reads that filter by `course_id` and order by assignment
         creation use `(course_id, created_at)`; the Phase 4 performance

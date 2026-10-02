@@ -4,7 +4,7 @@ import type {
 } from '@/utils/exam/domain/exam-lifecycle.domain'
 import { GradedMcAnswerRow } from '@/components/exam/exam-grading/GradedMcAnswerRow'
 import { OpenAnswerGradeRow } from '@/components/exam/exam-grading/OpenAnswerGradeRow'
-import { FinalizeGradingButton } from '@/components/exam/exam-grading/FinalizeGradingButton'
+import { FinalizeGradingPanel } from '@/components/exam/exam-grading/FinalizeGradingPanel'
 import { ATTEMPT_STATUS_CHIP } from '@/components/exam/exam-grading/GradingAttemptsList'
 import { StatusChip } from '@/components/ui/status-chip'
 
@@ -32,7 +32,12 @@ export type GradingAnswer = {
 }
 
 type GradingViewProps = {
-  attempt: { id: string; status: ExamAttemptStatus; totalScore: number | null }
+  attempt: {
+    id: string
+    status: ExamAttemptStatus
+    totalScore: number | null
+    feedback: string | null
+  }
   questions: Array<GradingQuestion>
   options: Array<GradingOption>
   answers: Array<GradingAnswer>
@@ -58,7 +63,9 @@ export function GradingView({
           )}
         </div>
         {attempt.status === 'submitted' && (
-          <FinalizeGradingButton attemptId={attempt.id} />
+          <span className="text-xs tracking-widest text-[#8E816D] uppercase">
+            Awaiting finalization
+          </span>
         )}
       </div>
       {questions.map((question, index) => {
@@ -81,6 +88,11 @@ export function GradingView({
           />
         )
       })}
+      <FinalizeGradingPanel
+        attemptId={attempt.id}
+        status={attempt.status}
+        feedback={attempt.feedback}
+      />
     </div>
   )
 }

@@ -46,12 +46,3 @@ export function calculateAssignmentStats(submissionsList: Array<Submission>): {
 
   return { total, submitted, graded }
 }
-
-/**
- * Filters assignments by status for student view (only published)
- */
-export function filterAssignmentsForStudent(
-  assignmentsList: Array<Assignment>,
-): Array<Assignment> {
-  return assignmentsList.filter((a) => a.status === 'published')
-}

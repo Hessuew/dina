@@ -937,6 +937,66 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
   })
 
+  it('rejects a submission to a closed assignment', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'closed',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await expect(
+      createOrUpdateSubmissionService(
+        { assignmentId, submit: true },
+        studentId,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
+  })
+
+  it('rejects edits once the submission has been submitted', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+    await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+
+    await expect(
+      createOrUpdateSubmissionService(
+        { assignmentId, content: 'changed answer', submit: false },
+        studentId,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT', status: 409 })
+  })
+
+  it('lets a student open a closed assignment read-only', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'closed',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    const result = await getAssignmentService({ assignmentId }, studentId)
+
+    expect(result.assignment.id).toBe(assignmentId)
+    expect(result.assignment.status).toBe('closed')
+  })
+
+  it('includes closed assignments in the student list', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const closedId = await seedAssignment({ lessonId, status: 'closed' })
+    const studentId = await seedProfile({ role: 'student' })
+
+    const { assignments } = await getAllAssignmentsForStudentService(studentId)
+
+    expect(assignments.map((a) => a.id)).toContain(closedId)
+  })
+
   it('throws when the assignment does not exist', async () => {
     const studentId = await seedProfile({ role: 'student' })
 
@@ -1077,7 +1137,7 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
     )
     vi.spyOn(
       sharedRepository,
-      'findPublishedAssignments',
+      'findPublishedOrClosedAssignments',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(

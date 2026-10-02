@@ -10,6 +10,8 @@ describe('buildSubmissionHeaderViewModel', () => {
     isStudent: true,
     canSubmit: true,
     isPastDue: false,
+    isClosed: false,
+    submissionStatus: null,
     submissionCount: 0,
   }
 
@@ -79,19 +81,86 @@ describe('buildSubmissionHeaderViewModel', () => {
         }).subtitle,
       ).toBe('Not yet open')
     })
+
+    it('shows the closed message when the assignment is closed', () => {
+      expect(
+        buildSubmissionHeaderViewModel({ ...base, isClosed: true }).subtitle,
+      ).toBe('This assignment is closed')
+    })
+
+    it('closed wins over past-due and can-submit', () => {
+      expect(
+        buildSubmissionHeaderViewModel({
+          ...base,
+          isClosed: true,
+          isPastDue: true,
+        }).subtitle,
+      ).toBe('This assignment is closed')
+    })
+
+    it('shows "Submitted" once the student has submitted', () => {
+      expect(
+        buildSubmissionHeaderViewModel({
+          ...base,
+          canSubmit: false,
+          submissionStatus: 'submitted',
+        }).subtitle,
+      ).toBe('Submitted')
+    })
+
+    it('shows "Graded" for graded or returned submissions', () => {
+      for (const submissionStatus of ['graded', 'returned']) {
+        expect(
+          buildSubmissionHeaderViewModel({
+            ...base,
+            canSubmit: false,
+            submissionStatus,
+          }).subtitle,
+        ).toBe('Graded')
+      }
+    })
+
+    it('submission status wins over closed and past-due', () => {
+      expect(
+        buildSubmissionHeaderViewModel({
+          ...base,
+          canSubmit: false,
+          isClosed: true,
+          isPastDue: true,
+          submissionStatus: 'submitted',
+        }).subtitle,
+      ).toBe('Submitted')
+    })
+
+    it('ignores a draft submission status', () => {
+      expect(
+        buildSubmissionHeaderViewModel({
+          ...base,
+          submissionStatus: 'draft',
+        }).subtitle,
+      ).toBe('Submit before the due date')
+    })
   })
 })
 
 describe('buildPastDueNoticeViewModel', () => {
-  it('hides notice when not past due', () => {
+  it('hides notice when not past due and not closed', () => {
     expect(
-      buildPastDueNoticeViewModel({ isPastDue: false, canSubmit: true }),
+      buildPastDueNoticeViewModel({
+        isPastDue: false,
+        canSubmit: true,
+        isClosed: false,
+      }),
     ).toBeNull()
   })
 
   it('uses soft copy when past due and late submissions still allowed', () => {
     expect(
-      buildPastDueNoticeViewModel({ isPastDue: true, canSubmit: true }),
+      buildPastDueNoticeViewModel({
+        isPastDue: true,
+        canSubmit: true,
+        isClosed: false,
+      }),
     ).toEqual({
       tone: 'soft',
       message: 'Past due — late submissions still accepted',
@@ -102,12 +171,31 @@ describe('buildPastDueNoticeViewModel', () => {
 
   it('uses hard copy when past due and submissions closed', () => {
     expect(
-      buildPastDueNoticeViewModel({ isPastDue: true, canSubmit: false }),
+      buildPastDueNoticeViewModel({
+        isPastDue: true,
+        canSubmit: false,
+        isClosed: false,
+      }),
     ).toEqual({
       tone: 'hard',
       message: 'This assignment is past due',
       className:
         'border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400',
+    })
+  })
+
+  it('uses muted copy when the assignment is closed, even when not past due', () => {
+    expect(
+      buildPastDueNoticeViewModel({
+        isPastDue: false,
+        canSubmit: false,
+        isClosed: true,
+      }),
+    ).toEqual({
+      tone: 'muted',
+      message: 'This assignment is closed — submissions are read-only',
+      className:
+        'border border-white/10 bg-white/4 px-4 py-3 text-xs text-[#AFA28F]',
     })
   })
 })
@@ -134,12 +222,20 @@ describe('buildSubmissionStatusViewModel', () => {
       expect(vm.statusVariant).toBe('draft')
     })
 
-    it('is "draft" for any non-submitted status', () => {
+    it('is "draft" for a non-submitted status without a grade', () => {
       const vm = buildSubmissionStatusViewModel(
         { ...baseSubmission, status: 'graded' },
         null,
       )
       expect(vm.statusVariant).toBe('draft')
+    })
+
+    it('is "graded" when a grade is present', () => {
+      const vm = buildSubmissionStatusViewModel(
+        { ...baseSubmission, status: 'graded', grade: 80 },
+        null,
+      )
+      expect(vm.statusVariant).toBe('graded')
     })
   })
 

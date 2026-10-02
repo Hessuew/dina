@@ -1,9 +1,12 @@
+import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
+import { resolveSubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
+
 export interface SubmissionHeaderViewModel {
   title: string
   subtitle: string
 }
 
-export type PastDueNoticeTone = 'soft' | 'hard'
+export type PastDueNoticeTone = 'soft' | 'hard' | 'muted'
 
 export interface PastDueNoticeViewModel {
   tone: PastDueNoticeTone
@@ -11,17 +14,32 @@ export interface PastDueNoticeViewModel {
   className: string
 }
 
+const SUBMISSION_STATUS_SUBTITLE: Record<string, string> = {
+  submitted: 'Submitted',
+  graded: 'Graded',
+  returned: 'Graded',
+}
+
 export function buildSubmissionHeaderViewModel(input: {
   isStudent: boolean
   canSubmit: boolean
   isPastDue: boolean
+  isClosed: boolean
+  submissionStatus: string | null
   submissionCount: number
 }): SubmissionHeaderViewModel {
-  const { isStudent, canSubmit, isPastDue, submissionCount } = input
+  const { isStudent, canSubmit, isPastDue, isClosed, submissionCount } = input
+  const statusSubtitle = input.submissionStatus
+    ? SUBMISSION_STATUS_SUBTITLE[input.submissionStatus]
+    : undefined
   const title = isStudent ? 'Your Submission' : 'Submissions'
   let subtitle: string
   if (!isStudent) {
     subtitle = `${submissionCount} submitted`
+  } else if (statusSubtitle) {
+    subtitle = statusSubtitle
+  } else if (isClosed) {
+    subtitle = 'This assignment is closed'
   } else if (canSubmit && isPastDue) {
     subtitle = 'Late submissions accepted'
   } else if (canSubmit) {
@@ -34,11 +52,23 @@ export function buildSubmissionHeaderViewModel(input: {
   return { title, subtitle }
 }
 
-/** Past-due about-card notice; null when not past due. Soft when late still allowed. */
+/**
+ * About-card notice; null when not past due and not closed. Soft when late
+ * still allowed, muted for closed, hard for past due.
+ */
 export function buildPastDueNoticeViewModel(input: {
   isPastDue: boolean
   canSubmit: boolean
+  isClosed: boolean
 }): PastDueNoticeViewModel | null {
+  if (input.isClosed) {
+    return {
+      tone: 'muted',
+      message: 'This assignment is closed — submissions are read-only',
+      className:
+        'border border-white/10 bg-white/4 px-4 py-3 text-xs text-[#AFA28F]',
+    }
+  }
   if (!input.isPastDue) return null
   if (input.canSubmit) {
     return {
@@ -57,7 +87,7 @@ export function buildPastDueNoticeViewModel(input: {
 }
 
 export interface SubmissionStatusViewModel {
-  statusVariant: 'submitted' | 'draft'
+  statusVariant: SubmissionStatusVariant
   showSubmittedAt: boolean
   submittedAtLabel: string
   showGradeSection: boolean
@@ -77,7 +107,10 @@ export function buildSubmissionStatusViewModel(
 ): SubmissionStatusViewModel {
   const { status, grade, feedback, submittedAt } = submission
   return {
-    statusVariant: status === 'submitted' ? 'submitted' : 'draft',
+    statusVariant: resolveSubmissionStatusVariant({
+      grade,
+      status: status as SubmissionStatusVariant,
+    }),
     showSubmittedAt: submittedAt !== null,
     submittedAtLabel: submittedAt ? new Date(submittedAt).toLocaleString() : '',
     showGradeSection: grade !== null,

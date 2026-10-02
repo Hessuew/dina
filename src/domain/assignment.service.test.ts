@@ -3,7 +3,6 @@ import type { assignments, submissions } from '@/db/schema'
 import {
   calculateAssignmentStats,
   canDeleteAssignment,
-  filterAssignmentsForStudent,
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
 
@@ -93,23 +92,5 @@ describe('calculateAssignmentStats', () => {
       makeSubmission({ id: 's-3', status: 'draft', grade: null }),
     ])
     expect(result).toEqual({ total: 3, submitted: 2, graded: 1 })
-  })
-})
-
-describe('filterAssignmentsForStudent', () => {
-  it('returns only published assignments', () => {
-    const result = filterAssignmentsForStudent([
-      makeAssignment({ id: 'a-1', status: 'published' }),
-      makeAssignment({ id: 'a-2', status: 'draft' }),
-      makeAssignment({ id: 'a-3', status: 'published' }),
-    ])
-    expect(result).toHaveLength(2)
-    expect(result.map((a) => a.id)).toEqual(['a-1', 'a-3'])
-  })
-
-  it('returns empty array when no assignments are published', () => {
-    expect(
-      filterAssignmentsForStudent([makeAssignment({ status: 'draft' })]),
-    ).toEqual([])
   })
 })
