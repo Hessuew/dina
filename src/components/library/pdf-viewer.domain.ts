@@ -24,3 +24,14 @@ export function resolvePdfPinchZoom(
   if (startDistance <= 0 || currentDistance <= 0) return startZoom
   return clampPdfZoom((startZoom * currentDistance) / startDistance)
 }
+
+export function resolvePdfResumePage(options: {
+  initialPage: number | null
+  numPages: number
+  docReady: boolean
+  alreadyApplied: boolean
+}): number | null {
+  if (options.alreadyApplied || !options.docReady) return null
+  if (options.initialPage == null || options.numPages === 0) return null
+  return Math.min(options.numPages, Math.max(1, options.initialPage))
+}

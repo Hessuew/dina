@@ -462,8 +462,31 @@ Landscape `aspect-3/2 w-80` card in horizontal-scroll shelves. Full-bleed thumbn
 
 - All category badges use **gold** accent only (`border-[#C5A059]/40`, `text-[#D4B373]`); icon varies per category.
 - Thumbnail scale: `duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105`.
-- Course chip border: `border-[#C5A059]/30`. Draft badge: `border-[#9B7A41]/30`.
+- Course chip border: `border-[#C5A059]/30`. Draft badge: `border-[#9B7A41]/30`. The top-right badge stack sits at `right-11` only when a star chip is overlaid (`reserveTopRight`); otherwise `right-3`.
+- **Star chip**: `StarToggle` overlays the card at `top-1 right-1` — outside the card's `<Link>` (nested interactives are invalid inside anchors) in the shelf wrapper. Unstarred = dark `Button` chip (`theme="dark"`, `size="icon"`); starred = `fill-[#C5A059] text-[#C5A059]` icon.
+- **Empty shelf**: a quick-access shelf that must stay visible while empty (e.g. "Starred") renders its label in muted `text-[#8E816D]` (not the gold `#9B7A41`) plus a one-line hint; shelves that may disappear (e.g. "Recently viewed") return `null` when empty.
 - Shelf rows scroll horizontally at every breakpoint. Below `sm` the row bleeds to the screen edge (`-mx-6 px-6`, reverting via `sm:mx-0 sm:px-0`) with `snap-x snap-mandatory` + `snap-start` on each card; cards render `w-80` on mobile and `w-96` on desktop.
+
+### PDF Reader Bar
+
+Single-row chrome on the dark `#151515` reader surface, identical on mobile and desktop:
+
+```tsx
+// Collapsed row — ‹ prev | page/total | next › | ⛶ fullscreen | ⋯ more
+// (icon-only ghost/dark size-sm buttons):
+<div className="flex w-full items-center justify-center gap-1 pb-2">…</div>
+
+// Expanded tray — an inline second row, never a portaled menu
+// (portals render outside the native-fullscreen element):
+<div className="flex w-full flex-wrap items-center justify-center gap-3 border-t border-white/10 py-2">
+  {/* page jump input + zoom −/%/+ */}
+</div>
+```
+
+- The page indicator (`12 / 240`, `tabular-nums`) opens the tray with the jump input focused.
+- The `⋯` toggle swaps to `×` while the tray is open.
+- Reader-bar buttons override the ghost variant's `hover`/`aria-expanded` tokens (`hover:bg-white/10`, `aria-expanded:text-[#D6B16E]`) — its light-theme `muted`/`foreground` reads near-black on `#151515`.
+- On `/library/$mediaId` the fixed mobile app header is hidden (`max-md:hidden`); the page Back button is the exit.
 
 ### Testimonial Card
 

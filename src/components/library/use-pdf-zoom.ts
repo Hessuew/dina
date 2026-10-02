@@ -5,10 +5,12 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react'
+import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
 import {
   clampPdfZoom,
   resolvePdfPinchZoom,
 } from '@/components/library/pdf-viewer.domain'
+import { classifyPdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
 
 type Point = { x: number; y: number }
 type PinchStart = {
@@ -16,6 +18,13 @@ type PinchStart = {
   zoom: number
   focusX: number
   focusY: number
+}
+type TapSwipeStart = {
+  pointerId: number
+  startX: number
+  startY: number
+  startTime: number
+  cancelled: boolean
 }
 
 function pairMetrics([first, second]: [Point, Point]) {
@@ -37,6 +46,7 @@ type GestureRefs = {
   viewport: RefObject<HTMLDivElement | null>
   points: RefObject<Map<number, Point>>
   pinch: RefObject<PinchStart | null>
+  tapSwipe: RefObject<TapSwipeStart | null>
 }
 
 function updatePointer(
@@ -61,6 +71,18 @@ function startPinch(
   refs: GestureRefs,
   zoom: number,
 ) {
+  if (refs.points.current.size === 0) {
+    refs.tapSwipe.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTime: event.timeStamp,
+      cancelled: false,
+    }
+  } else if (refs.tapSwipe.current) {
+    // A second finger joined: the gesture belongs to pinch/zoom now.
+    refs.tapSwipe.current.cancelled = true
+  }
   refs.points.current.set(event.pointerId, {
     x: event.clientX,
     y: event.clientY,
@@ -103,7 +125,35 @@ function movePinch(
   })
 }
 
-function endPinch(event: ReactPointerEvent<HTMLDivElement>, refs: GestureRefs) {
+function classifyEndGesture(
+  event: ReactPointerEvent<HTMLDivElement>,
+  tapSwipe: TapSwipeStart,
+  zoom: number,
+  onGesture: ((gesture: PdfGesture) => void) | undefined,
+) {
+  if (tapSwipe.cancelled || tapSwipe.pointerId !== event.pointerId) return
+  const gesture = classifyPdfGesture({
+    pointerCount: 1,
+    startX: tapSwipe.startX,
+    startY: tapSwipe.startY,
+    endX: event.clientX,
+    endY: event.clientY,
+    durationMs: event.timeStamp - tapSwipe.startTime,
+    zoom,
+  })
+  if (gesture) onGesture?.(gesture)
+}
+
+function endPinch(
+  event: ReactPointerEvent<HTMLDivElement>,
+  refs: GestureRefs,
+  zoom: number,
+  onGesture: ((gesture: PdfGesture) => void) | undefined,
+  classify: boolean,
+) {
+  const tapSwipe = refs.tapSwipe.current
+  if (classify && tapSwipe) classifyEndGesture(event, tapSwipe, zoom, onGesture)
+  if (tapSwipe?.pointerId === event.pointerId) refs.tapSwipe.current = null
   refs.points.current.delete(event.pointerId)
   if (refs.points.current.size < 2) refs.pinch.current = null
 }
@@ -112,11 +162,18 @@ export function usePdfZoom(
   viewportRef: RefObject<HTMLDivElement | null>,
   zoomResetKey: string,
   scrollResetKey: string,
+  onGesture?: (gesture: PdfGesture) => void,
 ) {
   const [zoom, setZoom] = useState(1)
   const pointsRef = useRef(new Map<number, Point>())
   const pinchRef = useRef<PinchStart | null>(null)
-  const refs = { viewport: viewportRef, points: pointsRef, pinch: pinchRef }
+  const tapSwipeRef = useRef<TapSwipeStart | null>(null)
+  const refs = {
+    viewport: viewportRef,
+    points: pointsRef,
+    pinch: pinchRef,
+    tapSwipe: tapSwipeRef,
+  }
 
   useEffect(() => {
     setZoom(1)
@@ -131,7 +188,9 @@ export function usePdfZoom(
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) =>
     movePinch(event, refs, setZoom)
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) =>
-    endPinch(event, refs)
+    endPinch(event, refs, zoom, onGesture, true)
+  const onPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) =>
+    endPinch(event, refs, zoom, onGesture, false)
 
   return {
     zoom,
@@ -142,7 +201,7 @@ export function usePdfZoom(
       onPointerDown,
       onPointerMove,
       onPointerUp: onPointerEnd,
-      onPointerCancel: onPointerEnd,
+      onPointerCancel,
     },
   }
 }

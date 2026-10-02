@@ -1,11 +1,19 @@
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
-import { canManageShelfItem } from '@/utils/library/domain/library-view.domain'
+import { StarToggle } from '@/components/library/StarToggle'
+import { resolveShelfManageActions } from '@/utils/library/domain/library-view.domain'
 
 type LibraryShelfPermissions = {
   canEdit: boolean
   isCourseTeacher: boolean
+}
+
+export type ShelfStars = {
+  isStarred: (mediaId: string) => boolean
+  onToggleStar: (mediaId: string) => void
+  /** False until prefs load — hides the chip instead of flashing "unstarred". */
+  loaded?: boolean
 }
 
 type LibraryShelfProps = {
@@ -15,58 +23,108 @@ type LibraryShelfProps = {
   audioVisual: Array<MediaLibraryRow>
   viewerRole: 'student' | 'teacher' | 'admin'
   permissions?: LibraryShelfPermissions
+  stars?: ShelfStars
   onEditMedia?: (item: MediaLibraryRow) => void
   onDeleteMedia?: (item: MediaLibraryRow) => void
+}
+
+function StarOverlay({
+  stars,
+  mediaId,
+}: {
+  stars?: ShelfStars
+  mediaId: string
+}) {
+  if (!stars || stars.loaded === false) return null
+  return (
+    <div
+      className="absolute top-1 right-1 z-30"
+      onClick={(e) => e.preventDefault()}
+    >
+      <StarToggle
+        starred={stars.isStarred(mediaId)}
+        onToggle={() => stars.onToggleStar(mediaId)}
+      />
+    </div>
+  )
+}
+
+function ManageActionsOverlay({
+  item,
+  permissions,
+  onEditMedia,
+  onDeleteMedia,
+}: {
+  item: MediaLibraryRow
+  permissions?: LibraryShelfPermissions
+  onEditMedia?: (item: MediaLibraryRow) => void
+  onDeleteMedia?: (item: MediaLibraryRow) => void
+}) {
+  const actions = resolveShelfManageActions(
+    permissions,
+    onEditMedia,
+    onDeleteMedia,
+  )
+  if (!actions) return null
+  return (
+    <div
+      className="absolute top-1 left-1 hidden group-hover:flex"
+      onClick={(e) => e.preventDefault()}
+    >
+      <EntityHeaderActions
+        status="published"
+        canEdit={actions.canEdit}
+        isCourseTeacher={actions.isCourseTeacher}
+        showStatus={false}
+        theme="dark"
+        size="sm"
+        onEdit={() => actions.onEditMedia(item)}
+        onDelete={() => actions.onDeleteMedia(item)}
+      />
+    </div>
+  )
 }
 
 function MediaCardWithActions({
   item,
   viewerRole,
   permissions,
+  stars,
   onEditMedia,
   onDeleteMedia,
 }: {
   item: MediaLibraryRow
   viewerRole: 'student' | 'teacher' | 'admin'
   permissions?: LibraryShelfPermissions
+  stars?: ShelfStars
   onEditMedia?: (item: MediaLibraryRow) => void
   onDeleteMedia?: (item: MediaLibraryRow) => void
 }) {
-  const canManage = canManageShelfItem(
-    permissions,
-    onEditMedia != null,
-    onDeleteMedia != null,
-  )
-
   return (
     <div className="group relative w-80 shrink-0 snap-start max-[22rem]:w-[calc(100vw-3rem)] sm:w-auto">
-      <MediaCard item={item} viewerRole={viewerRole} />
-      {canManage && permissions && onEditMedia && onDeleteMedia && (
-        <div
-          className="absolute top-1 left-1 hidden group-hover:flex"
-          onClick={(e) => e.preventDefault()}
-        >
-          <EntityHeaderActions
-            status="published"
-            canEdit={permissions.canEdit}
-            isCourseTeacher={permissions.isCourseTeacher}
-            showStatus={false}
-            theme="dark"
-            size="sm"
-            onEdit={() => onEditMedia(item)}
-            onDelete={() => onDeleteMedia(item)}
-          />
-        </div>
-      )}
+      <MediaCard
+        item={item}
+        viewerRole={viewerRole}
+        reserveTopRight={stars != null}
+      />
+      <StarOverlay stars={stars} mediaId={item.id} />
+      <ManageActionsOverlay
+        item={item}
+        permissions={permissions}
+        onEditMedia={onEditMedia}
+        onDeleteMedia={onDeleteMedia}
+      />
     </div>
   )
 }
 
-function ShelfSection({
+export function ShelfSection({
   label,
   items,
   viewerRole,
   permissions,
+  stars,
+  emptyHint,
   onEditMedia,
   onDeleteMedia,
 }: {
@@ -74,10 +132,22 @@ function ShelfSection({
   items: Array<MediaLibraryRow>
   viewerRole: LibraryShelfProps['viewerRole']
   permissions?: LibraryShelfPermissions
+  stars?: ShelfStars
+  emptyHint?: string
   onEditMedia?: (item: MediaLibraryRow) => void
   onDeleteMedia?: (item: MediaLibraryRow) => void
 }) {
-  if (items.length === 0) return null
+  if (items.length === 0) {
+    if (!emptyHint) return null
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#8E816D] uppercase">
+          {label}
+        </p>
+        <p className="text-xs text-[#8E816D]">{emptyHint}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -91,6 +161,7 @@ function ShelfSection({
             item={item}
             viewerRole={viewerRole}
             permissions={permissions}
+            stars={stars}
             onEditMedia={onEditMedia}
             onDeleteMedia={onDeleteMedia}
           />
@@ -107,6 +178,7 @@ export function LibraryShelf({
   audioVisual,
   viewerRole,
   permissions,
+  stars,
   onEditMedia,
   onDeleteMedia,
 }: LibraryShelfProps) {
@@ -124,6 +196,7 @@ export function LibraryShelf({
         items={lectures}
         viewerRole={viewerRole}
         permissions={permissions}
+        stars={stars}
         onEditMedia={onEditMedia}
         onDeleteMedia={onDeleteMedia}
       />
@@ -132,6 +205,7 @@ export function LibraryShelf({
         items={ebooks}
         viewerRole={viewerRole}
         permissions={permissions}
+        stars={stars}
         onEditMedia={onEditMedia}
         onDeleteMedia={onDeleteMedia}
       />
@@ -140,6 +214,7 @@ export function LibraryShelf({
         items={audioVisual}
         viewerRole={viewerRole}
         permissions={permissions}
+        stars={stars}
         onEditMedia={onEditMedia}
         onDeleteMedia={onDeleteMedia}
       />

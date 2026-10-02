@@ -11,6 +11,7 @@ import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { MediaLibraryRow } from '@/utils/library'
 import type { Role } from '@/utils/authz/types'
+import type { ShelfStars } from '@/components/library/LibraryShelf'
 import { useDialogState } from '@/hooks/useDialogState'
 import { Button } from '@/components/ui/button'
 import { ButtonLink } from '@/components/ui/button-link'
@@ -22,11 +23,14 @@ import {
   canManageMediaRow,
   getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
+  resolveMediaByIds,
 } from '@/utils/library/domain/library-view.domain'
+import { isMediaStarred } from '@/utils/library/domain/library-prefs.domain'
+import { useLibraryPrefs } from '@/hooks/useLibraryPrefs'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
-import { LibraryShelf } from '@/components/library/LibraryShelf'
+import { LibraryShelf, ShelfSection } from '@/components/library/LibraryShelf'
 import { SessionImage } from '@/components/ui/session-image'
 
 const ImportEbooksDialog = lazy(() =>
@@ -167,6 +171,7 @@ type LibraryShelvesProps = {
   shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
   shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
   viewerRole: Role
+  stars: ShelfStars
   openDialog: OpenLibraryDialog
 }
 
@@ -175,6 +180,7 @@ function LibraryShelves({
   shelves,
   shelfTopics,
   viewerRole,
+  stars,
   openDialog,
 }: LibraryShelvesProps) {
   if (shelfTopics.length === 0) {
@@ -202,11 +208,46 @@ function LibraryShelves({
               canEdit: canCreate,
               isCourseTeacher: canCreate,
             }}
+            stars={stars}
             onEditMedia={(item) => openDialog('edit', item)}
             onDeleteMedia={(item) => openDialog('delete', item)}
           />
         )
       })}
+    </div>
+  )
+}
+
+function LibraryQuickShelves({
+  media,
+  stars,
+  starredIds,
+  recentIds,
+  viewerRole,
+}: {
+  media: Array<MediaLibraryRow>
+  stars: ShelfStars
+  starredIds: Array<string>
+  recentIds: Array<string>
+  viewerRole: Role
+}) {
+  const starred = resolveMediaByIds(starredIds, media)
+  const recent = resolveMediaByIds(recentIds, media)
+  return (
+    <div className="mb-12 flex flex-col gap-8">
+      <ShelfSection
+        label="Starred"
+        items={starred}
+        viewerRole={viewerRole}
+        stars={stars}
+        emptyHint="Star a book to pin it here"
+      />
+      <ShelfSection
+        label="Recently viewed"
+        items={recent}
+        viewerRole={viewerRole}
+        stars={stars}
+      />
     </div>
   )
 }
@@ -376,6 +417,10 @@ type LibraryBodyProps = {
   shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
   viewerRole: Role
   viewer: { id: string; role: Role }
+  stars: ShelfStars
+  starredIds: Array<string>
+  recentIds: Array<string>
+  prefsLoaded: boolean
   openDialog: OpenLibraryDialog
 }
 
@@ -387,6 +432,10 @@ function LibraryBody({
   shelfTopics,
   viewerRole,
   viewer,
+  stars,
+  starredIds,
+  recentIds,
+  prefsLoaded,
   openDialog,
 }: LibraryBodyProps) {
   if (media.length === 0) {
@@ -405,11 +454,21 @@ function LibraryBody({
 
   return (
     <>
+      {prefsLoaded && (
+        <LibraryQuickShelves
+          media={media}
+          stars={stars}
+          starredIds={starredIds}
+          recentIds={recentIds}
+          viewerRole={viewerRole}
+        />
+      )}
       <LibraryShelves
         canCreate={canCreate}
         shelves={shelves}
         shelfTopics={shelfTopics}
         viewerRole={viewerRole}
+        stars={stars}
         openDialog={openDialog}
       />
 
@@ -586,6 +645,12 @@ function LibraryComponent() {
 
   const canCreate = canCreateMedia(viewer.role)
   const { shelves, shelfTopics } = getVisibleShelfTopics(media)
+  const { prefs, loaded, toggleStar } = useLibraryPrefs(viewer.id)
+  const stars: ShelfStars = {
+    isStarred: (id) => isMediaStarred(prefs, id),
+    onToggleStar: toggleStar,
+    loaded,
+  }
   const columns = useMemo(
     () => buildLibraryColumns(viewer, openDialog),
     [viewer, openDialog],
@@ -607,6 +672,10 @@ function LibraryComponent() {
         shelfTopics={shelfTopics}
         viewerRole={viewer.role}
         viewer={viewer}
+        stars={stars}
+        starredIds={prefs.stars}
+        recentIds={prefs.recent}
+        prefsLoaded={loaded}
         openDialog={openDialog}
       />
 

@@ -37,6 +37,13 @@ This folder contains:
   - `view/`: composite “page section” components for feature pages. Includes `exams-view/` with `ExamInstructionsBanner` and student/teacher list components.
   - `exam/`: exam authoring editor (`exam-editor/`), student taking interface (`exam-taking/`), and teacher grading (`exam-grading/`).
   - `landing/`: public landing page sections.
+  - `library/`: media-library shelf rows (`LibraryShelf`/`ShelfSection`), media cards
+    (`media-card/`), `StarToggle` (device-local favorite, gold-filled star when starred),
+    and the `PdfViewer` reader. The reader bar is a single icon row
+    (`‹ page/total › ⛶ ⋯`) whose `⋯` expands an inline tray (page jump + zoom);
+    portaled menus must not be used inside it — portals render outside the
+    native-fullscreen element. Gestures (tap-to-toggle chrome in fullscreen,
+    swipe page-turns at zoom 1) are classified in `pdf-viewer.gesture.domain.ts`.
 
 ## Key Invariants / Assumptions
 
