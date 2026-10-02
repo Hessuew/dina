@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildInitialSubmissionFormData,
-  canOpenUnpublishedAssignment,
   deriveSubmissionPermissions,
   formatSubmissionGrade,
   formatSubmittedDate,
@@ -120,6 +119,40 @@ describe('deriveSubmissionPermissions', () => {
         dueDate: future,
       }),
     ).toEqual({ isStudent: true, isPastDue: false, canSubmit: false })
+  })
+
+  it('blocks submission for a closed assignment', () => {
+    expect(
+      deriveSubmissionPermissions({
+        role: 'student',
+        status: 'closed',
+        dueDate: future,
+      }),
+    ).toEqual({ isStudent: true, isPastDue: false, canSubmit: false })
+  })
+
+  it('locks submission once the student has submitted', () => {
+    for (const status of ['submitted', 'graded', 'returned'] as const) {
+      expect(
+        deriveSubmissionPermissions({
+          role: 'student',
+          status: 'published',
+          dueDate: future,
+          submission: { status },
+        }).canSubmit,
+      ).toBe(false)
+    }
+  })
+
+  it('keeps a draft submission editable', () => {
+    expect(
+      deriveSubmissionPermissions({
+        role: 'student',
+        status: 'published',
+        dueDate: future,
+        submission: { status: 'draft' },
+      }).canSubmit,
+    ).toBe(true)
   })
 
   it('marks non-students as unable to submit', () => {
@@ -241,38 +274,39 @@ describe('isAssignmentVisibleToViewer', () => {
   it('shows every status to managers', () => {
     expect(
       isAssignmentVisibleToViewer({
-        role: 'teacher',
         canManage: true,
         status: 'draft',
       }),
     ).toBe(true)
     expect(
       isAssignmentVisibleToViewer({
-        role: 'admin',
         canManage: true,
         status: 'closed',
       }),
     ).toBe(true)
   })
 
-  it('shows only published to non-managers', () => {
+  it('shows published and closed to non-managers', () => {
     expect(
       isAssignmentVisibleToViewer({
-        role: 'teacher',
         canManage: false,
         status: 'published',
       }),
     ).toBe(true)
     expect(
       isAssignmentVisibleToViewer({
-        role: 'teacher',
+        canManage: false,
+        status: 'closed',
+      }),
+    ).toBe(true)
+    expect(
+      isAssignmentVisibleToViewer({
         canManage: false,
         status: 'draft',
       }),
     ).toBe(false)
     expect(
       isAssignmentVisibleToViewer({
-        role: 'student',
         canManage: false,
         status: 'draft',
       }),
@@ -284,25 +318,5 @@ describe('shouldLoadAssignmentSubmissions', () => {
   it('is true only for managers', () => {
     expect(shouldLoadAssignmentSubmissions(true)).toBe(true)
     expect(shouldLoadAssignmentSubmissions(false)).toBe(false)
-  })
-})
-
-describe('canOpenUnpublishedAssignment', () => {
-  it('denies students always', () => {
-    expect(
-      canOpenUnpublishedAssignment({ role: 'student', canManage: true }),
-    ).toBe(false)
-  })
-
-  it('allows staff only when they manage the course', () => {
-    expect(
-      canOpenUnpublishedAssignment({ role: 'teacher', canManage: true }),
-    ).toBe(true)
-    expect(
-      canOpenUnpublishedAssignment({ role: 'teacher', canManage: false }),
-    ).toBe(false)
-    expect(
-      canOpenUnpublishedAssignment({ role: 'admin', canManage: true }),
-    ).toBe(true)
   })
 })

@@ -10,7 +10,7 @@ import {
   findAllCalendarEvents,
   findCoursesByIds,
   findLessonsByIds,
-  findPublishedAssignments,
+  findPublishedOrClosedAssignments,
   findPublishedScheduledLessons,
 } from '@/utils/repository'
 
@@ -24,7 +24,7 @@ export async function getCalendarEventsService(userId: string) {
     const [lessonSources, assignmentSources, specialEvents] = await Promise.all(
       [
         findPublishedScheduledLessons(),
-        findPublishedAssignments(),
+        findPublishedOrClosedAssignments(),
         findAllCalendarEvents(),
       ],
     )

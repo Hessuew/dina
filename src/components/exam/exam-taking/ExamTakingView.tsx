@@ -32,6 +32,7 @@ export type TakingAttempt = {
   autoScore: number | null
   manualScore: number | null
   totalScore: number | null
+  feedback: string | null
 }
 
 export type TakingAnswer = {

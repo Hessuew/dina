@@ -40,13 +40,18 @@ export function deriveSubmissionPermissions(input: {
   role: string
   status: string
   dueDate: Date | string
+  submission?: { status: string } | null
   now?: Date
 }): { isStudent: boolean; isPastDue: boolean; canSubmit: boolean } {
   const now = input.now ?? new Date()
   const isStudent = input.role === 'student'
   const isPastDue = new Date(input.dueDate) < now
   // Due date is soft: published assignments stay submittable after due.
-  const canSubmit = isStudent && input.status === 'published'
+  // A submitted/graded/returned submission is locked — only drafts stay editable.
+  const canSubmit =
+    isStudent &&
+    input.status === 'published' &&
+    (input.submission == null || input.submission.status === 'draft')
   return { isStudent, isPastDue, canSubmit }
 }
 
@@ -101,28 +106,18 @@ export function navigateAfterDelete(
 
 /**
  * Whether an assignment status is visible to a viewer.
- * Students and non-managing staff only see published; managers (Course Teacher
- * + Admin) see drafts/closed too.
+ * Students and non-managing staff see published and closed (read-only);
+ * managers (Course Teacher + Admin) see drafts too.
  */
 export function isAssignmentVisibleToViewer(input: {
-  role: string
   canManage: boolean
   status: string
 }): boolean {
   if (input.canManage) return true
-  return input.status === 'published'
+  return input.status === 'published' || input.status === 'closed'
 }
 
 /** Staff may load the full submissions list only when they manage the course. */
 export function shouldLoadAssignmentSubmissions(canManage: boolean): boolean {
   return canManage
-}
-
-/** Staff may open a non-published assignment only when they manage the course. */
-export function canOpenUnpublishedAssignment(input: {
-  role: string
-  canManage: boolean
-}): boolean {
-  if (input.role === 'student') return false
-  return input.canManage
 }

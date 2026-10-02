@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/button'
 import { useMutation } from '@/hooks/useMutation'
 import { finalizeExamGrading } from '@/utils/exam'
 
-export function FinalizeGradingButton({ attemptId }: { attemptId: string }) {
+export function FinalizeGradingButton({
+  attemptId,
+  feedback,
+}: {
+  attemptId: string
+  feedback: string
+}) {
   const router = useRouter()
   const finalizeMutation = useMutation({
     fn: finalizeExamGrading,
@@ -18,7 +24,9 @@ export function FinalizeGradingButton({ attemptId }: { attemptId: string }) {
     <Button
       size="sm"
       disabled={finalizeMutation.isPending}
-      onClick={() => void finalizeMutation.mutate({ data: { attemptId } })}
+      onClick={() =>
+        void finalizeMutation.mutate({ data: { attemptId, feedback } })
+      }
     >
       {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize grading'}
     </Button>
