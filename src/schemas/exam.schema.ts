@@ -123,6 +123,7 @@ export const gradeOpenAnswerSchema = z.object({
 
 export const finalizeGradingSchema = z.object({
   attemptId: z.uuid('Invalid attempt ID'),
+  feedback: z.string().optional(),
 })
 
 export type CreateExamInput = z.infer<typeof createExamSchema>

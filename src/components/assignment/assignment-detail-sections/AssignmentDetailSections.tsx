@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { SaveIcon, SendIcon } from 'lucide-react'
 import {
   buildPastDueNoticeViewModel,
@@ -7,6 +7,7 @@ import {
 } from './assignment-detail-sections.domain'
 import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { StatusChip } from '@/components/ui/status-chip'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
@@ -78,7 +79,11 @@ function AssignmentAboutCard({
   isPastDue: boolean
   canSubmit: boolean
 }) {
-  const pastDueNotice = buildPastDueNoticeViewModel({ isPastDue, canSubmit })
+  const pastDueNotice = buildPastDueNoticeViewModel({
+    isPastDue,
+    canSubmit,
+    isClosed: assignment.status === 'closed',
+  })
 
   return (
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
@@ -119,17 +124,23 @@ function SubmissionHeader({
   isStudent,
   canSubmit,
   isPastDue,
+  isClosed,
+  submissionStatus,
   submissionCount,
 }: {
   isStudent: boolean
   canSubmit: boolean
   isPastDue: boolean
+  isClosed: boolean
+  submissionStatus: string | null
   submissionCount: number
 }) {
   const { title, subtitle } = buildSubmissionHeaderViewModel({
     isStudent,
     canSubmit,
     isPastDue,
+    isClosed,
+    submissionStatus,
     submissionCount,
   })
 
@@ -234,6 +245,8 @@ function SubmissionFormActions({
   isSavingSubmission: boolean
   onSaveSubmission: (submit: boolean) => void
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <Button
@@ -248,13 +261,26 @@ function SubmissionFormActions({
       </Button>
       <Button
         theme="dark"
-        onClick={() => onSaveSubmission(true)}
+        onClick={() => setConfirmOpen(true)}
         className="w-full sm:w-auto"
         disabled={isSavingSubmission}
       >
         <SendIcon className="size-3.5" />
         Submit
       </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Submit assignment"
+        description="Once submitted, you cannot change or resubmit your answer. Are you sure you are ready?"
+        confirmLabel="Submit"
+        pendingLabel="Submitting…"
+        isPending={isSavingSubmission}
+        onConfirm={() => {
+          setConfirmOpen(false)
+          onSaveSubmission(true)
+        }}
+      />
     </div>
   )
 }
@@ -276,7 +302,7 @@ function StudentSubmissionForm({
   onChangeSubmissionFormData: (data: SubmissionFormData) => void
   onSaveSubmission: (submit: boolean) => void
 }) {
-  if (assignment.status !== 'published') {
+  if (assignment.status === 'draft') {
     return (
       <p className="py-8 text-center text-sm text-[#8E816D] italic">
         This assignment is not yet available.
@@ -332,35 +358,81 @@ function SubmissionPanel({
         isStudent={isStudent}
         canSubmit={canSubmit}
         isPastDue={isPastDue}
+        isClosed={assignment.status === 'closed'}
+        submissionStatus={submission?.status ?? null}
         submissionCount={allSubmissions.length}
       />
 
       <div className="px-6 py-6">
-        {isStudent ? (
-          <StudentSubmissionForm
-            assignment={assignment}
-            submission={submission}
-            formData={submissionFormData}
-            canSubmit={canSubmit}
-            isSavingSubmission={isSavingSubmission}
-            onChangeSubmissionFormData={onChangeSubmissionFormData}
-            onSaveSubmission={onSaveSubmission}
-          />
-        ) : allSubmissions.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-sm text-[#AFA28F] italic">No submissions yet</p>
-          </div>
-        ) : (
-          <Suspense fallback={<SubmissionsTableFallback />}>
-            <AssignmentSubmissionsTable
-              allSubmissions={allSubmissions}
-              maxGrade={assignment.maxGrade}
-              onGrade={onGradeSubmission}
-            />
-          </Suspense>
-        )}
+        <SubmissionPanelBody
+          assignment={assignment}
+          submission={submission}
+          allSubmissions={allSubmissions}
+          isStudent={isStudent}
+          canSubmit={canSubmit}
+          submissionFormData={submissionFormData}
+          isSavingSubmission={isSavingSubmission}
+          onChangeSubmissionFormData={onChangeSubmissionFormData}
+          onSaveSubmission={onSaveSubmission}
+          onGradeSubmission={onGradeSubmission}
+        />
       </div>
     </div>
+  )
+}
+
+function SubmissionPanelBody({
+  assignment,
+  submission,
+  allSubmissions,
+  isStudent,
+  canSubmit,
+  submissionFormData,
+  isSavingSubmission,
+  onChangeSubmissionFormData,
+  onSaveSubmission,
+  onGradeSubmission,
+}: Pick<
+  AssignmentDetailSectionsProps,
+  | 'assignment'
+  | 'submission'
+  | 'allSubmissions'
+  | 'isStudent'
+  | 'canSubmit'
+  | 'submissionFormData'
+  | 'isSavingSubmission'
+  | 'onChangeSubmissionFormData'
+  | 'onSaveSubmission'
+  | 'onGradeSubmission'
+>) {
+  if (isStudent) {
+    return (
+      <StudentSubmissionForm
+        assignment={assignment}
+        submission={submission}
+        formData={submissionFormData}
+        canSubmit={canSubmit}
+        isSavingSubmission={isSavingSubmission}
+        onChangeSubmissionFormData={onChangeSubmissionFormData}
+        onSaveSubmission={onSaveSubmission}
+      />
+    )
+  }
+  if (allSubmissions.length === 0) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-sm text-[#AFA28F] italic">No submissions yet</p>
+      </div>
+    )
+  }
+  return (
+    <Suspense fallback={<SubmissionsTableFallback />}>
+      <AssignmentSubmissionsTable
+        allSubmissions={allSubmissions}
+        maxGrade={assignment.maxGrade}
+        onGrade={onGradeSubmission}
+      />
+    </Suspense>
   )
 }
 

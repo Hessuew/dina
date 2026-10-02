@@ -192,7 +192,7 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 | Manage Enrollments                                             | ✗       | ✗       | ✗       | ✓     |
 
 ¹ Teacher view is read-only; email, phone/WhatsApp, and invitation tracking fields are redacted (stripped server-side).  
-² Students see published content for their learning surfaces (not the staff catalog).  
+² Students see published content for their learning surfaces (not the staff catalog); closed assignments remain visible read-only, and submitted work can no longer be edited.  
 ³ Only as **Course Teacher** of that course (`course_teachers`); outsider Teacher-users get catalog/shell only.
 ⁴ Only with the **Enrolment contact export** Staff Privilege. List/detail stay redacted.
 ⁵ Present override only, with **Academy-wide attendance override**. Live session open/close stays Course Teacher / Admin.

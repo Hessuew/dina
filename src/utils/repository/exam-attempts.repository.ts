@@ -100,22 +100,33 @@ export async function markAttemptSubmittedIfInProgress(
   return attempt
 }
 
+/**
+ * Conditionally flips a submitted attempt to graded — the double-finalize
+ * guard. Returns the updated row, or undefined when the attempt was already
+ * finalized (a concurrent finalize won first).
+ */
 export async function markAttemptGraded(
   attemptId: string,
   scores: { autoScore: number; manualScore: number; totalScore: number },
   gradedBy: string,
-): Promise<void> {
+  feedback: string | null,
+): Promise<ExamAttemptRow | undefined> {
   const db = await getDb()
-  await db
+  const [attempt] = await db
     .update(examAttempts)
     .set({
       status: 'graded',
       gradedAt: new Date(),
       gradedBy,
       ...scores,
+      feedback,
       updatedAt: new Date(),
     })
-    .where(eq(examAttempts.id, attemptId))
+    .where(
+      and(eq(examAttempts.id, attemptId), eq(examAttempts.status, 'submitted')),
+    )
+    .returning()
+  return attempt
 }
 
 export async function countAttemptsByExam(examId: string): Promise<number> {

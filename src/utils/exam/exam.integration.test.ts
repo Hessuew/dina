@@ -1303,6 +1303,7 @@ describe('exam grading (integration)', () => {
       submittedView.answers.find((answer) => answer.questionId === mcQuestionId)
         ?.isCorrect,
     ).toBeNull()
+    expect(submittedView.attempt.feedback).toBeNull()
 
     await expect(
       finalizeGradingService({ attemptId }, teacherId),
@@ -1325,7 +1326,10 @@ describe('exam grading (integration)', () => {
       { answerId: openAnswer!.id, awardedPoints: 4 },
       teacherId,
     )
-    await finalizeGradingService({ attemptId }, teacherId)
+    await finalizeGradingService(
+      { attemptId, feedback: 'Strong work overall' },
+      teacherId,
+    )
 
     const gradingEvents = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
@@ -1376,6 +1380,7 @@ describe('exam grading (integration)', () => {
     expect(result.attempt.autoScore).toBe(2)
     expect(result.attempt.manualScore).toBe(4)
     expect(result.attempt.totalScore).toBe(6)
+    expect(result.attempt.feedback).toBe('Strong work overall')
     expect(
       result.options.find((option) => option.id === correctOptionId)?.isCorrect,
     ).toBe(true)

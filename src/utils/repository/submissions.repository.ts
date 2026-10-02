@@ -108,6 +108,11 @@ export async function findSubmissionsForStudents(studentIds: Array<string>) {
   })
 }
 
+/**
+ * Insert or update a submission. Rows past `draft` are write-locked: a
+ * concurrent draft save landing after submit keeps the locked status, content,
+ * and submittedAt instead of reverting the row.
+ */
 export async function upsertSubmission(values: {
   assignmentId: string
   studentId: string
@@ -122,7 +127,12 @@ export async function upsertSubmission(values: {
     .onConflictDoUpdate({
       target: [submissions.assignmentId, submissions.studentId],
       set: {
-        content: values.content,
+        content: sql<string | null>`CASE
+          WHEN ${submissions.status} IN ('submitted', 'graded', 'returned')
+            AND excluded.status = 'draft'
+          THEN ${submissions.content}
+          ELSE excluded.content
+        END`,
         status: sql<SubmissionStatus>`CASE
           WHEN ${submissions.status} IN ('submitted', 'graded', 'returned')
             AND excluded.status = 'draft'
@@ -140,7 +150,12 @@ export async function upsertSubmission(values: {
   return submission
 }
 
-export async function updateSubmission(
+/**
+ * Update a submission only while it is still a draft — the conditional
+ * double-write guard. Returns undefined when the row was already submitted
+ * (a racing write finalized it first); the caller must surface a conflict.
+ */
+export async function updateDraftSubmission(
   submissionId: string,
   values: {
     content: string | null
@@ -148,12 +163,14 @@ export async function updateSubmission(
     submittedAt: Date | null
     updatedAt: Date
   },
-) {
+): Promise<typeof submissions.$inferSelect | undefined> {
   const db = await getDb()
   const [submission] = await db
     .update(submissions)
     .set(values)
-    .where(eq(submissions.id, submissionId))
+    .where(
+      and(eq(submissions.id, submissionId), eq(submissions.status, 'draft')),
+    )
     .returning()
   return submission
 }

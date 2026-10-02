@@ -182,6 +182,7 @@ export const examAttempts = pgTable(
     autoScore: integer('auto_score'),
     manualScore: integer('manual_score'),
     totalScore: integer('total_score'),
+    feedback: text('feedback'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

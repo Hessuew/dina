@@ -205,7 +205,6 @@ function AssignmentRowMeta({ assignment }: { assignment: Assignment }) {
 
 function AssignmentsSection({
   assignments,
-  role,
   permissions,
   onCreateAssignment,
   onEditAssignment,
@@ -214,7 +213,6 @@ function AssignmentsSection({
   onPrefetchAssignment,
 }: {
   assignments: Array<Assignment>
-  role: LessonDetailSectionsProps['role']
   permissions: LessonDetailSectionsProps['permissions']
   onCreateAssignment: () => void
   onEditAssignment: (assignment: Assignment) => void
@@ -225,7 +223,6 @@ function AssignmentsSection({
   const canManage = permissions.canEdit && permissions.isCourseTeacher
   const visibleAssignments = assignments.filter((assignment) =>
     isAssignmentVisibleToViewer({
-      role,
       canManage,
       status: assignment.status,
     }),
@@ -290,7 +287,6 @@ export function LessonDetailSections({
       />
       <AssignmentsSection
         assignments={lesson.assignments}
-        role={role}
         permissions={permissions}
         onCreateAssignment={onCreateAssignment}
         onEditAssignment={onEditAssignment}
