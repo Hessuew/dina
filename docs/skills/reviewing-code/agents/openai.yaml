@@ -1,0 +1,3 @@
+interface:
+  display_name: 'Code Review Skill'
+  short_description: 'Evidence-led review of correctness and production risk'
