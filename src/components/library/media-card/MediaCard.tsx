@@ -4,11 +4,14 @@ import { buildMediaCardViewModel } from './media-card.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { MediaCardViewModel, MediaTypeConfig } from './media-card.domain'
 import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
+import { cn } from '@/lib/utils'
 
 type MediaCardProps = {
   item: MediaLibraryRow
   viewerRole: 'student' | 'teacher' | 'admin'
   size?: 'default' | 'panel' | 'mobile'
+  /** Leave the top-right corner free for an overlaid action chip (e.g. star). */
+  reserveTopRight?: boolean
 }
 
 function MediaCardAura({ thumbnailUrl }: { thumbnailUrl: string | null }) {
@@ -91,13 +94,20 @@ function MediaCardMeta({
   item,
   showCourseNumber,
   showDraftBadge,
+  reserveTopRight,
 }: {
   item: MediaLibraryRow
   showCourseNumber: boolean
   showDraftBadge: boolean
+  reserveTopRight: boolean
 }) {
   return (
-    <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1">
+    <div
+      className={cn(
+        'absolute top-3 z-20 flex flex-col items-end gap-1',
+        reserveTopRight ? 'right-11' : 'right-3',
+      )}
+    >
       {showCourseNumber && (
         <span className="border border-[#C5A059]/30 bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest text-[#F8F4EC] uppercase backdrop-blur-sm">
           Course {item.courseNumber}
@@ -115,9 +125,11 @@ function MediaCardMeta({
 function MediaCardBody({
   item,
   view,
+  reserveTopRight,
 }: {
   item: MediaLibraryRow
   view: MediaCardViewModel
+  reserveTopRight: boolean
 }) {
   return (
     <Link
@@ -146,6 +158,7 @@ function MediaCardBody({
         item={item}
         showCourseNumber={view.showCourseNumber}
         showDraftBadge={view.showDraftBadge}
+        reserveTopRight={reserveTopRight}
       />
 
       {/* Bottom: gold divider, title, category badge, file type */}
@@ -163,6 +176,7 @@ export function MediaCard({
   item,
   viewerRole,
   size = 'default',
+  reserveTopRight = false,
 }: MediaCardProps) {
   const view = buildMediaCardViewModel(item, viewerRole, size)
   const thumbnailUrl = useSessionPrivateImageUrl(view.thumbnailUrl) ?? null
@@ -172,7 +186,11 @@ export function MediaCard({
     <div className={`group relative shrink-0 max-sm:w-full ${view.widthClass}`}>
       {/* Blurred thumbnail aura behind card */}
       <MediaCardAura thumbnailUrl={thumbnailUrl} />
-      <MediaCardBody item={item} view={sessionView} />
+      <MediaCardBody
+        item={item}
+        view={sessionView}
+        reserveTopRight={reserveTopRight}
+      />
     </div>
   )
 }
