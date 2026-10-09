@@ -55,6 +55,10 @@ enforced-by: <how violations are caught — gate / eslint / review>
 
 ## Rules
 
+Every delivery also follows [no-mistakes](./no-mistakes.md), including documentation-only
+and automated dependency PRs. Its review guidance is explicitly injected by the trusted
+repository configuration; GitHub enforcement must be activated as described in that rule.
+
 | Rule                                            | Scope                                | Enforced by                                                  |
 | ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------ |
 | [complexity](./complexity.md)                   | new/changed components & endpoints   | `quality:static` (Fallow `introduced` cyc/cog/CRAP) + ESLint |
