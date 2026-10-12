@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/cloudflare'
 import { wrapFetchWithSentry } from '@sentry/tanstackstart-react'
 import handler from '@tanstack/react-start/server-entry'
+import { env as workerEnv } from 'cloudflare:workers'
 import { shouldSuppressFromSentry } from '@/utils/errors'
 import {
   checkDatabaseReadiness,
@@ -11,23 +12,63 @@ import {
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
+import { fetchWithAssetFallback } from '@/utils/asset-routing'
+import { handleReleaseEndpoint } from '@/utils/observability/release-endpoints'
+import { runRequestWithReleaseMetrics } from '@/utils/observability/release-request'
+import {
+  addWorkerVersionHeaders,
+  readWorkerVersionMetadata,
+} from '@/utils/observability/version-headers'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
-type WorkerObservabilityEnv = Env & {
-  BETTER_STACK_DSN?: string
-  SENTRY_DSN?: string
-  SENTRY_ENVIRONMENT?: string
-  SENTRY_RELEASE?: string
-}
 
 const appHandler = {
   async fetch(request: Request, opts?: unknown): Promise<Response> {
-    const operationalResponse = await handleOperationalRequest(request)
+    const startedAt = performance.now()
+    const metadata =
+      readWorkerVersionMetadata(opts) ?? readWorkerVersionMetadata(workerEnv)
+    const runtime = workerEnv as unknown as Parameters<
+      typeof handleReleaseEndpoint
+    >[1]
+    const assetRuntime = workerEnv as unknown as Parameters<
+      typeof fetchWithAssetFallback
+    >[1]
+    const releaseResponse = await handleReleaseEndpoint(
+      request,
+      runtime,
+      metadata,
+    )
+    if (releaseResponse) return releaseResponse
 
-    if (operationalResponse) return operationalResponse
-
-    return handler.fetch(request, opts as HandlerOptions)
+    const response = await runRequestWithReleaseMetrics(
+      request,
+      runtime,
+      metadata,
+      startedAt,
+      async () => {
+        const operationalResponse = await handleOperationalRequest(request)
+        if (operationalResponse) return operationalResponse
+        return fetchWithAssetFallback(request, assetRuntime, async () =>
+          handler.fetch(request, opts as HandlerOptions),
+        )
+      },
+    )
+    return addWorkerVersionHeaders(
+      response,
+      { WORKER_VERSION: metadata },
+      request,
+    )
   },
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readOptionalString(value: unknown, key: string): string | undefined {
+  if (!isRecord(value)) return undefined
+  const candidate = value[key]
+  return typeof candidate === 'string' ? candidate : undefined
 }
 
 async function handleOperationalRequest(
@@ -48,19 +89,18 @@ async function handleOperationalRequest(
 // Wrap only in the built Worker; dev falls back to the plain handler.
 export default import.meta.env.PROD
   ? Sentry.withSentry((env) => {
-      const workerEnv = env as WorkerObservabilityEnv
       const identity = resolveObservabilityIdentity(
         import.meta.env.MODE,
-        workerEnv.SENTRY_ENVIRONMENT,
-        workerEnv.SENTRY_RELEASE ??
+        readOptionalString(env, 'SENTRY_ENVIRONMENT'),
+        readOptionalString(env, 'SENTRY_RELEASE') ??
           import.meta.env.VITE_SENTRY_RELEASE ??
           import.meta.env.VITE_APP_VERSION,
       )
 
       return {
         dsn: resolveObservabilityDsn(
-          workerEnv.BETTER_STACK_DSN,
-          workerEnv.SENTRY_DSN,
+          readOptionalString(env, 'BETTER_STACK_DSN'),
+          readOptionalString(env, 'SENTRY_DSN'),
         ),
         environment: identity.environment,
         release: identity.release,

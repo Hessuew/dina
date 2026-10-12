@@ -14,29 +14,23 @@ import {
   isCloudflareMode,
   resolveCloudflareClientShim,
   resolveSentryBuildConfig,
+  shouldEmitSourceMaps,
 } from './scripts/vite-config.domain.ts'
 
 const config = defineConfig(({ mode }) => {
   const isCloudflare = isCloudflareMode(mode)
-  const sentryBuildConfig = resolveSentryBuildConfig(
-    loadEnv(mode, process.cwd(), ''),
-  )
+  const buildEnv = loadEnv(mode, process.cwd(), '')
+  const sentryBuildConfig = resolveSentryBuildConfig(buildEnv)
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
   )
 
-  // Several @tanstack/* dist files reference .map files they don't ship,
-  // producing noisy "Failed to load source map" warnings. Filter just those.
-  const logger = createLogger()
-  const baseWarn = logger.warn
-  logger.warn = (msg, options) => {
-    if (msg.includes('Failed to load source map')) return
-    baseWarn(msg, options)
-  }
-
   return {
-    customLogger: logger,
+    customLogger: createViteLogger(),
+    build: {
+      sourcemap: shouldEmitSourceMaps(buildEnv) ? 'hidden' : false,
+    },
     resolve: {
       tsconfigPaths: true,
       alias: buildResolveAlias(
@@ -45,27 +39,47 @@ const config = defineConfig(({ mode }) => {
         isCloudflare,
       ),
     },
-    plugins: [
-      devtools(),
-      isCloudflare && cloudflare({ viteEnvironment: { name: 'ssr' } }),
-      isCloudflare && {
-        name: 'cloudflare-workers-client-shim',
-        enforce: 'pre' as const,
-        resolveId(
-          id: string,
-          _importer: string | undefined,
-          opts: { ssr?: boolean },
-        ) {
-          return resolveCloudflareClientShim(id, opts.ssr, shimPath)
-        },
-      },
-      tailwindcss(),
-      tanstackStart(),
-      ...(sentryBuildConfig ? [sentryTanstackStart(sentryBuildConfig)] : []),
-      viteReact(),
-      babel({ presets: [reactCompilerPreset()] }),
-    ].filter(Boolean),
+    plugins: buildVitePlugins(isCloudflare, shimPath, sentryBuildConfig),
   }
 })
+
+function createViteLogger() {
+  // Several @tanstack/* dist files reference .map files they don't ship,
+  // producing noisy "Failed to load source map" warnings. Filter just those.
+  const logger = createLogger()
+  const baseWarn = logger.warn
+  logger.warn = (msg, options) => {
+    if (msg.includes('Failed to load source map')) return
+    baseWarn(msg, options)
+  }
+  return logger
+}
+
+function buildVitePlugins(
+  isCloudflare: boolean,
+  shimPath: string,
+  sentryBuildConfig: ReturnType<typeof resolveSentryBuildConfig>,
+) {
+  return [
+    devtools(),
+    isCloudflare && cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    isCloudflare && {
+      name: 'cloudflare-workers-client-shim',
+      enforce: 'pre' as const,
+      resolveId(
+        id: string,
+        _importer: string | undefined,
+        opts: { ssr?: boolean },
+      ) {
+        return resolveCloudflareClientShim(id, opts.ssr, shimPath)
+      },
+    },
+    tailwindcss(),
+    tanstackStart(),
+    ...(sentryBuildConfig ? [sentryTanstackStart(sentryBuildConfig)] : []),
+    viteReact(),
+    babel({ presets: [reactCompilerPreset()] }),
+  ].filter(Boolean)
+}
 
 export default config

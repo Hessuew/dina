@@ -40,6 +40,10 @@ Create a private drill record with:
 Record only references and pass/fail results in Notion. Do not attach a dump or
 copy production data into the evidence record.
 
+For a tagged release, record the immutable release tag, validated SHA,
+Cloudflare version id, and rollback target alongside the migration filename.
+These identifiers are evidence only; do not copy provider tokens or raw logs.
+
 ### 2. Confirm a usable recovery point
 
 In the source Supabase project, open **Database → Backups** and confirm that a

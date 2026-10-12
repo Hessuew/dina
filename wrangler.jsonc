@@ -4,6 +4,16 @@
   "compatibility_date": "2026-04-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+  },
+  "vars": {
+    "RELEASE_METRICS_DATASET": "dina_release_metrics",
+    "RELEASE_ALERTS_SLACK_INCIDENTS": "false",
+    "RELEASE_ALERTS_EMAIL_FALLBACK": "false",
+  },
   // Keep the Better Stack Errors DSN in a Worker secret, not in source.
   // Configure it with: wrangler secret put BETTER_STACK_DSN
   "observability": {
@@ -20,6 +30,18 @@
     {
       "binding": "HYPERDRIVE",
       "id": "fc8915964fb8466c81f83fcd27e77833",
+    },
+  ],
+  // Exposes the deployed version id/tag for exact-version smoke checks and
+  // release-correlated telemetry. Version affinity is configured at the zone
+  // edge because this Worker serves HTML and content-hashed assets.
+  "version_metadata": {
+    "binding": "WORKER_VERSION",
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "RELEASE_METRICS",
+      "dataset": "dina_release_metrics",
     },
   ],
   "routes": [

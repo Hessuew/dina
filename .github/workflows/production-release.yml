@@ -1,0 +1,725 @@
+name: Production release
+
+run-name: Production release ${{ inputs.target_sha || github.event.workflow_run.head_sha }}
+
+on:
+  workflow_run:
+    workflows: [Main release gate]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Full validated main commit SHA to promote
+        required: true
+        type: string
+      rollout_profile:
+        description: Worker promotion profile
+        required: true
+        default: standard
+        type: choice
+        options:
+          - standard
+          - gradual
+
+permissions:
+  actions: read
+  contents: write
+  deployments: write
+  pull-requests: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve validated release identity
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main') ||
+        (github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
+      }}
+    runs-on: ubuntu-latest
+    outputs:
+      target_sha: ${{ steps.identity.outputs.target_sha }}
+      release_tag: ${{ steps.identity.outputs.release_tag }}
+      rollout_profile: ${{ steps.identity.outputs.rollout_profile }}
+      tooling_sha: ${{ steps.identity.outputs.tooling_sha }}
+    env:
+      TARGET_SHA_INPUT: ${{ inputs.target_sha || github.event.workflow_run.head_sha }}
+      ROLLOUT_PROFILE_INPUT: ${{ inputs.rollout_profile || 'standard' }}
+      PRODUCTION_RELEASE_ENABLED: ${{ vars.PRODUCTION_RELEASE_ENABLED || 'false' }}
+      CLOUDFLARE_VERSION_AFFINITY_READY: ${{ vars.CLOUDFLARE_VERSION_AFFINITY_READY || 'false' }}
+      CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL: ${{ vars.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Keep automatic promotion fail-closed until readiness is approved
+        run: |
+          if [[ "$PRODUCTION_RELEASE_ENABLED" != "true" ]]; then
+            echo "Production release is disabled. Set the protected repository variable PRODUCTION_RELEASE_ENABLED=true only after the readiness checklist is complete."
+            exit 1
+          fi
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - name: Verify Cloudflare version-affinity readiness
+        env:
+          CLOUDFLARE_VERSION_AFFINITY_READY: ${{ env.CLOUDFLARE_VERSION_AFFINITY_READY }}
+          CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL: ${{ env.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL }}
+        run: |
+          bun run scripts/release-policy.ts affinity-readiness \
+            --ready "$CLOUDFLARE_VERSION_AFFINITY_READY" \
+            --evidence-url "$CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL"
+      - run: bun install --frozen-lockfile
+      - name: Verify exact validated main SHA
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+        run: |
+          TARGET_SHA=$(bun run scripts/release-policy.ts validate-sha --sha "$TARGET_SHA")
+          git fetch origin main --tags --force
+          git cat-file -e "$TARGET_SHA^{commit}"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+          echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_ENV"
+      - name: Verify immutable v* tag protection
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const {
+              hasImmutableReleaseTagRuleset,
+              normalizeRulesetDetails,
+            } = require(
+              `${process.cwd()}/scripts/release-protection.cjs`,
+            )
+            const summaries = await github.paginate(
+              github.rest.repos.getRepoRulesets,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 },
+            )
+            if (
+              !Array.isArray(summaries) ||
+              summaries.some(
+                (ruleset) =>
+                  !ruleset ||
+                  (typeof ruleset.id !== 'number' &&
+                    !(typeof ruleset.id === 'string' && ruleset.id.length > 0)),
+              )
+            ) {
+              throw new Error('Incomplete repository ruleset list response.')
+            }
+            const detailResponses = await Promise.all(
+              summaries.map(({ id }) =>
+                github.rest.repos.getRepoRuleset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ruleset_id: id,
+                }),
+              ),
+            )
+            const rulesets = normalizeRulesetDetails(summaries, detailResponses)
+            if (!hasImmutableReleaseTagRuleset(rulesets)) {
+              throw new Error(
+                'No active immutable v* tag ruleset protects releases.',
+              )
+            }
+      - name: Confirm a successful main release gate for manual promotions
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+        with:
+          script: |
+            const targetSha = process.env.TARGET_SHA.trim().toLowerCase()
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'main-release.yml',
+              branch: 'main',
+              status: 'completed',
+              per_page: 100,
+            })
+            const validated = runs.find(
+              (run) => run.head_sha.toLowerCase() === targetSha && run.conclusion === 'success',
+            )
+            if (!validated) {
+              core.setFailed(`No successful Main release gate found for ${targetSha}.`)
+            }
+      - name: Verify manual target is current or previously trusted
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const {
+              isSupportedManualPromotionTarget,
+              loadTrustedReleaseBindings,
+            } = require(
+              `${process.cwd()}/scripts/trusted-release.cjs`,
+            )
+            const targetSha = process.env.TARGET_SHA.trim().toLowerCase()
+            const currentMain = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            })
+            const currentMainSha = currentMain.data.commit.sha
+            let bindings = {}
+            if (targetSha !== currentMainSha.trim().toLowerCase()) {
+              bindings = await loadTrustedReleaseBindings(github, context.repo)
+            }
+            if (
+              !isSupportedManualPromotionTarget(
+                targetSha,
+                currentMainSha,
+                bindings,
+              )
+            ) {
+              throw new Error(
+                'Manual target must be the current main commit or a trusted production release commit.',
+              )
+            }
+      - id: identity
+        name: Create immutable dated release tag
+        env:
+          ROLLOUT_PROFILE: ${{ env.ROLLOUT_PROFILE_INPUT }}
+        run: |
+          if [[ "$ROLLOUT_PROFILE" != "standard" && "$ROLLOUT_PROFILE" != "gradual" ]]; then
+            echo "rollout_profile must be standard or gradual"
+            exit 1
+          fi
+          release_date=$(date -u +%Y.%m.%d)
+          existing_tags=$(git tag --list 'v*' | paste -sd, -)
+          release_tag=$(bun run scripts/release-policy.ts tag --date "$release_date" --tags "$existing_tags")
+          tooling_sha=$(git rev-parse HEAD)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$release_tag" "$TARGET_SHA" -m "DINA production release $release_tag"
+          git push origin "$release_tag"
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "rollout_profile=$ROLLOUT_PROFILE" >> "$GITHUB_OUTPUT"
+          echo "tooling_sha=$tooling_sha" >> "$GITHUB_OUTPUT"
+
+  migrate:
+    name: Migrate production database
+    needs: resolve
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: supabase-production-migrations
+      cancel-in-progress: false
+    env:
+      TARGET_SHA: ${{ needs.resolve.outputs.target_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.target_sha }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Replay the committed migration chain
+        run: bun run test:integration
+      - name: Apply compatible pending migrations without seeding
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun run db:migrate
+
+  deploy:
+    name: Upload, smoke, and promote Worker
+    needs: [resolve, migrate]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 100
+    env:
+      TARGET_SHA: ${{ needs.resolve.outputs.target_sha }}
+      RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
+      ROLLOUT_PROFILE: ${{ needs.resolve.outputs.rollout_profile }}
+      WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME || 'christ-dina' }}
+      PRODUCTION_ORIGIN: ${{ vars.PRODUCTION_ORIGIN || 'https://christ-dina.org' }}
+      PRODUCTION_JOURNEY_PATHS: ${{ vars.PRODUCTION_JOURNEY_PATHS }}
+      CLOUDFLARE_LEGACY_VERSION_IDS: ${{ vars.CLOUDFLARE_LEGACY_VERSION_IDS }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_GOOGLE_ADS_ID: ${{ vars.VITE_GOOGLE_ADS_ID }}
+      VITE_META_PIXEL_ID: ${{ vars.VITE_META_PIXEL_ID }}
+      VITE_APP_VERSION: ${{ needs.resolve.outputs.release_tag }}
+      VITE_SENTRY_ENVIRONMENT: production
+      VITE_SENTRY_RELEASE: ${{ needs.resolve.outputs.release_tag }}
+      SENTRY_ENVIRONMENT: production
+      SENTRY_RELEASE: ${{ needs.resolve.outputs.release_tag }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.BETTER_STACK_APPLICATION_ID }}
+      SENTRY_URL: ${{ vars.SENTRY_URL }}
+      BETTER_STACK_APPLICATION_ID: ${{ vars.BETTER_STACK_APPLICATION_ID }}
+      CLOUDFLARE_VERSION_METRICS_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_METRICS_QUERYABLE || 'false' }}
+      CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE || 'false' }}
+      CLOUDFLARE_VERSION_METRICS_URL: ${{ vars.CLOUDFLARE_VERSION_METRICS_URL }}
+      PRODUCTION_RELEASE_EVIDENCE_URL: ${{ vars.PRODUCTION_RELEASE_EVIDENCE_URL }}
+      RELEASE_ALERTS_SLACK_INCIDENTS: ${{ vars.RELEASE_ALERTS_SLACK_INCIDENTS || 'false' }}
+      RELEASE_ALERTS_EMAIL_FALLBACK: ${{ vars.RELEASE_ALERTS_EMAIL_FALLBACK || 'false' }}
+      ROLLOUT_STAGE_WAIT_SECONDS: ${{ vars.ROLLOUT_STAGE_WAIT_SECONDS || '600' }}
+    outputs:
+      cloudflare_version_id: ${{ steps.upload.outputs.version_id }}
+      previous_version_id: ${{ steps.preflight.outputs.previous_version_id }}
+      rollout_result: ${{ steps.standard_guardrails.outputs.result || steps.rollout.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.tooling_sha }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.target_sha }}
+          path: target
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Install target application dependencies
+        working-directory: target
+        run: bun install --frozen-lockfile
+      - id: trusted_releases
+        name: Resolve trusted immutable release bindings
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { loadTrustedReleaseBindings } = require(
+              `${process.cwd()}/scripts/trusted-release.cjs`,
+            )
+            const bindings = await loadTrustedReleaseBindings(github, context.repo)
+            core.setOutput('bindings', JSON.stringify(bindings))
+      - id: preflight
+        name: Record the current rollback target
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TRUSTED_RELEASE_BINDINGS: ${{ steps.trusted_releases.outputs.bindings }}
+        run: |
+          deployments_json=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json)
+          previous_version_id=$(bun run scripts/rollback-target.ts <<< "$deployments_json")
+          version_json=$(bunx wrangler versions view \
+            "$previous_version_id" \
+            --config wrangler.jsonc \
+            --name "$WORKER_NAME" \
+            --json)
+          legacy_version_ids=$(jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))' <<< "$CLOUDFLARE_LEGACY_VERSION_IDS")
+          rollback_target=$(jq -n \
+            --argjson deployments "$deployments_json" \
+            --argjson version "$version_json" \
+            --argjson legacyVersionIds "$legacy_version_ids" \
+            --argjson verifiedReleaseBindings "$TRUSTED_RELEASE_BINDINGS" \
+            '{deployments: $deployments, version: $version, legacyVersionIds: $legacyVersionIds, verifiedReleaseBindings: $verifiedReleaseBindings}' | \
+            bun run scripts/rollback-target.ts)
+          previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
+          legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")
+          previous_release_tag=$(jq -r '.releaseTag // empty' <<< "$rollback_target")
+          if [[ -z "$previous_version_id" || "$previous_version_id" == "null" || ("$legacy_compatible" != "true" && "$legacy_compatible" != "false") ]]; then
+            echo "No verified Cloudflare rollback target was found"
+            exit 1
+          fi
+          if [[ "$legacy_compatible" == "true" && -n "$previous_release_tag" ]]; then
+            echo "Legacy rollback target must not have a release tag"
+            exit 1
+          fi
+          if [[ "$legacy_compatible" == "false" && -z "$previous_release_tag" ]]; then
+            echo "Tagged rollback target must have a release tag"
+            exit 1
+          fi
+          echo "previous_version_id=$previous_version_id" >> "$GITHUB_OUTPUT"
+          echo "legacy_compatible=$legacy_compatible" >> "$GITHUB_OUTPUT"
+          echo "previous_release_tag=$previous_release_tag" >> "$GITHUB_OUTPUT"
+      - name: Build the tagged production artifact and upload source maps
+        working-directory: target
+        env:
+          RELEASE_SOURCE_MAPS_ENABLED: 'true'
+          VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
+        run: bun run build -- --outDir ../dist --emptyOutDir
+      - name: Register the Better Stack production release
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          if [[ -z "$BETTER_STACK_APPLICATION_ID" ]]; then
+            echo "BETTER_STACK_APPLICATION_ID is not configured"
+            exit 1
+          fi
+          release_url="https://errors.betterstack.com/api/v1/releases"
+          existing=$(curl --fail-with-body --silent --show-error \
+            --get "$release_url" \
+            --header "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            --data-urlencode "application_id=$BETTER_STACK_APPLICATION_ID" \
+            --data-urlencode "version=$RELEASE_TAG" \
+            --data-urlencode "environment=production")
+          if [[ "$(jq -r '.data | length' <<< "$existing")" == "0" ]]; then
+            curl --fail-with-body --silent --show-error --request POST "$release_url" \
+              --header "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+              --header 'Content-Type: application/json' \
+              --data "$(jq -nc \
+                --arg version "$RELEASE_TAG" \
+                --arg application "$BETTER_STACK_APPLICATION_ID" \
+                '{version: $version, applications: [$application | tonumber], environment: "production"}')"
+          fi
+      - id: validate_sentry_url
+        name: Validate configured source-map endpoint
+        env:
+          SENTRY_URL: ${{ env.SENTRY_URL }}
+        run: |
+          validated_sentry_url=$(bun run scripts/release-policy.ts validate-url --url "$SENTRY_URL")
+          echo "url=$validated_sentry_url" >> "$GITHUB_OUTPUT"
+      - name: Upload tagged source maps
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_URL: ${{ steps.validate_sentry_url.outputs.url }}
+        run: |
+          bunx sentry-cli sourcemaps upload dist \
+            --org "$SENTRY_ORG" \
+            --project "$SENTRY_PROJECT" \
+            --release "$RELEASE_TAG" \
+            --auth-token "$SENTRY_AUTH_TOKEN" \
+            --validate \
+            --wait
+      - name: Verify that the tagged source maps are queryable
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_URL: ${{ steps.validate_sentry_url.outputs.url }}
+        run: |
+          artifacts=$(bunx sentry-cli releases files "$RELEASE_TAG" \
+            --org "$SENTRY_ORG" \
+            --project "$SENTRY_PROJECT" \
+            --auth-token "$SENTRY_AUTH_TOKEN" \
+            --log-level error)
+          if [[ -z "$artifacts" ]] || ! grep -Eq '\.map([[:space:]]|$)' <<< "$artifacts"; then
+            echo "No source-map artifact was returned for $RELEASE_TAG"
+            exit 1
+          fi
+      - id: upload
+        name: Upload an undeployed Cloudflare Worker version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RELEASE_SHA: ${{ env.TARGET_SHA }}
+          RELEASE_ORIGIN: ${{ env.PRODUCTION_ORIGIN }}
+          RELEASE_SOURCE_MAPS_VERIFIED: 'true'
+          BETTER_STACK_APPLICATION_ID: ${{ env.BETTER_STACK_APPLICATION_ID }}
+          RELEASE_ALERTS_SLACK_INCIDENTS: ${{ env.RELEASE_ALERTS_SLACK_INCIDENTS }}
+          RELEASE_ALERTS_EMAIL_FALLBACK: ${{ env.RELEASE_ALERTS_EMAIL_FALLBACK }}
+        run: |
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "CLOUDFLARE_ACCOUNT_ID is not configured"
+            exit 1
+          fi
+          bunx wrangler versions upload dist/server/index.js \
+            --config wrangler.jsonc \
+            --no-bundle \
+            --name "$WORKER_NAME" \
+            --tag "$RELEASE_TAG" \
+            --message "DINA $RELEASE_TAG ($TARGET_SHA)" \
+            --upload-source-maps \
+            --var "RELEASE_SHA:$RELEASE_SHA" \
+            --var "RELEASE_ORIGIN:$RELEASE_ORIGIN" \
+            --var "RELEASE_SOURCE_MAPS_VERIFIED:$RELEASE_SOURCE_MAPS_VERIFIED" \
+            --var "CLOUDFLARE_ACCOUNT_ID:$CLOUDFLARE_ACCOUNT_ID" \
+            --var "BETTER_STACK_APPLICATION_ID:$BETTER_STACK_APPLICATION_ID" \
+            --var "RELEASE_ALERTS_SLACK_INCIDENTS:$RELEASE_ALERTS_SLACK_INCIDENTS" \
+            --var "RELEASE_ALERTS_EMAIL_FALLBACK:$RELEASE_ALERTS_EMAIL_FALLBACK" \
+            --keep-vars \
+            --strict
+          for attempt in {1..10}; do
+            version_id=$(bunx wrangler versions list --config wrangler.jsonc --name "$WORKER_NAME" --json | jq -r --arg tag "$RELEASE_TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | last | .id')
+            if [[ -n "$version_id" && "$version_id" != "null" ]]; then break; fi
+            sleep 3
+          done
+          if [[ -z "$version_id" || "$version_id" == "null" ]]; then
+            echo "Could not resolve uploaded version tag $RELEASE_TAG"
+            exit 1
+          fi
+          echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
+      - name: Place the new version at 0% for exact-version smoke
+        run: |
+          bunx wrangler versions deploy \
+            "$VERSION_ID@0" \
+            "${{ steps.preflight.outputs.previous_version_id }}@100" \
+            --config wrangler.jsonc \
+            --name "$WORKER_NAME" \
+            --message "Smoke test $RELEASE_TAG before promotion" \
+            --yes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+      - name: Run exact-version health smoke
+        env:
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
+          SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
+          SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
+        run: bun run scripts/retry-release-smoke.ts health
+      - name: Run affected public journey smoke through the version override
+        env:
+          SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
+          SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
+          PRODUCTION_JOURNEY_PATHS: ${{ env.PRODUCTION_JOURNEY_PATHS }}
+        run: bun run scripts/retry-release-smoke.ts journey
+      - id: rollout_readiness
+        name: Verify version guardrail readiness before promotion
+        run: |
+          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
+            echo "Promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
+            exit 1
+          fi
+      - id: rollout
+        name: Promote the Worker with the selected rollout profile
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          PREVIOUS_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+        run: |
+          if [[ "$ROLLOUT_PROFILE" == "standard" ]]; then
+            bunx wrangler versions deploy \
+              "$VERSION_ID@100" \
+              "$PREVIOUS_VERSION_ID@0" \
+              --name "$WORKER_NAME" \
+              --message "Promote $RELEASE_TAG at 100%" \
+              --yes
+            echo "result=standard:100%" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ROLLOUT_STAGE_WAIT_SECONDS=$(bun run scripts/release-policy.ts rollout-wait --seconds "$ROLLOUT_STAGE_WAIT_SECONDS")
+
+          for percentage in 10 25 50 100; do
+            bunx wrangler versions deploy \
+              "$VERSION_ID@$percentage" \
+              "$PREVIOUS_VERSION_ID@$((100 - percentage))" \
+              --config wrangler.jsonc \
+              --name "$WORKER_NAME" \
+              --message "Promote $RELEASE_TAG to $percentage%" \
+              --yes
+            stage_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            sleep "$ROLLOUT_STAGE_WAIT_SECONDS"
+            stage_finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            metrics=$(CLOUDFLARE_VERSION_METRICS_TOKEN="${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}" \
+              CLOUDFLARE_VERSION_ID="$VERSION_ID" \
+              CLOUDFLARE_METRICS_SINCE="$stage_started" \
+              CLOUDFLARE_METRICS_UNTIL="$stage_finished" \
+              bun run scripts/release-metrics.ts)
+            bun run scripts/release-policy.ts guardrails --metrics "$metrics"
+            requests=$(jq -r '.requests' <<< "$metrics")
+            decision=$(bun run scripts/release-policy.ts rollout --profile gradual --requests "$requests")
+            if [[ "$(jq -r '.mode' <<< "$decision")" == "direct" ]]; then
+              if [[ "$percentage" == "10" ]]; then
+                bunx wrangler versions deploy \
+                  "$VERSION_ID@100" \
+                  "$PREVIOUS_VERSION_ID@0" \
+                  --config wrangler.jsonc \
+                  --name "$WORKER_NAME" \
+                  --message "Low-traffic direct promotion of $RELEASE_TAG" \
+                  --yes
+                echo "result=gradual:direct-low-traffic" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Gradual stage $percentage% collected fewer than 20 new-version requests"
+              exit 1
+            fi
+          done
+          echo "result=gradual:10%-25%-50%-100%" >> "$GITHUB_OUTPUT"
+      - id: standard_guardrails
+        name: Evaluate standard post-promotion guardrails
+        if: env.ROLLOUT_PROFILE == 'standard'
+        env:
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: |
+          guardrail_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          sleep 300
+          guardrail_finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          metrics=$(CLOUDFLARE_VERSION_METRICS_TOKEN="${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}" \
+            CLOUDFLARE_VERSION_ID="$VERSION_ID" \
+            CLOUDFLARE_METRICS_SINCE="$guardrail_started" \
+            CLOUDFLARE_METRICS_UNTIL="$guardrail_finished" \
+            bun run scripts/release-metrics.ts)
+          bun run scripts/release-policy.ts guardrails --metrics "$metrics"
+          echo "result=standard:100%-guardrails-passed" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Standard rollout guardrails"
+            echo "- Metrics window: $guardrail_started to $guardrail_finished"
+            echo "- Result: passed"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify the promoted version after rollout
+        env:
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
+          SMOKE_EXPECTED_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
+        run: bun run scripts/retry-release-smoke.ts health
+      - name: Verify alert routing and release evidence
+        env:
+          PRODUCTION_RELEASE_EVIDENCE_TOKEN: ${{ secrets.PRODUCTION_RELEASE_EVIDENCE_TOKEN }}
+          CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: bun run scripts/release-evidence.ts
+      - name: Publish GitHub Release evidence and deployment binding
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          PREVIOUS_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          PREVIOUS_RELEASE_TAG: ${{ steps.preflight.outputs.previous_release_tag }}
+          ROLLOUT_RESULT: ${{ steps.standard_guardrails.outputs.result || steps.rollout.outputs.result }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const targetSha = process.env.TARGET_SHA
+            const { owner, repo } = context.repo
+            const { collectCompareHistory } = require(
+              `${process.cwd()}/scripts/release-history.cjs`,
+            )
+            const { selectTrustedPreviousRelease } = require(
+              `${process.cwd()}/scripts/release-record.cjs`,
+            )
+            const previousReleaseTag = (
+              process.env.PREVIOUS_RELEASE_TAG ?? ''
+            ).trim()
+            const releases = previousReleaseTag
+              ? await github.paginate(github.rest.repos.listReleases, {
+                  owner,
+                  repo,
+                  per_page: 100,
+                })
+              : []
+            const previousRelease = selectTrustedPreviousRelease(
+              releases,
+              previousReleaseTag,
+            )
+            if (previousReleaseTag && !previousRelease) {
+              throw new Error(
+                `Trusted previous release ${previousReleaseTag} is unavailable.`,
+              )
+            }
+            const targetCommit = previousRelease
+              ? null
+              : await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: targetSha,
+                })
+            const compareBase = previousRelease?.tag_name ?? targetCommit?.data.parents[0]?.sha
+            const compare = compareBase
+              ? await collectCompareHistory(github, {
+                  owner,
+                  repo,
+                  base: compareBase,
+                  head: targetSha,
+                })
+              : null
+            const migrationFiles = (compare?.files ?? [])
+              .map((file) => file.filename)
+              .filter((file) => file.startsWith('drizzle/'))
+            const commitRows = (compare?.commits ?? [])
+              .map((item) => `- ${item.sha.slice(0, 7)} ${item.commit.message.split('\n')[0]}`)
+            const pullRequests = new Map()
+            for (const item of compare?.commits ?? []) {
+              const associated = await github.paginate(
+                github.rest.repos.listPullRequestsAssociatedWithCommit,
+                { owner, repo, commit_sha: item.sha, per_page: 100 },
+              )
+              for (const pull of associated) pullRequests.set(pull.number, pull)
+            }
+            const prRows = [...pullRequests.values()]
+              .filter((pull) => pull.merged_at)
+              .sort((left, right) => left.number - right.number)
+              .map((pull) => `- #${pull.number} ${pull.title} (@${pull.user.login})`)
+            const notes = [
+              `# ${process.env.RELEASE_TAG}`,
+              '',
+              `- Validated main SHA: \`${targetSha}\``,
+              `- Production workflow run: \`${context.runId}\``,
+              `- Previous release: ${previousRelease?.tag_name ?? 'none'}`,
+              `- Cloudflare version: \`${process.env.CLOUDFLARE_VERSION_ID}\``,
+              `- Rollout result: ${process.env.ROLLOUT_RESULT}`,
+              '- Release evidence: passed (health, alert routing, and source-map correlation)',
+              `- Rollback target: \`${process.env.PREVIOUS_VERSION_ID}\``,
+              '',
+              '## Merged pull requests',
+              ...(prRows.length ? prRows : ['- None found']),
+              '',
+              '## Commits',
+              ...(commitRows.length ? commitRows : ['- None found']),
+              '',
+              '## Migration files',
+              ...(migrationFiles.length ? migrationFiles.map((file) => `- \`${file}\``) : ['- None']),
+            ].join('\n')
+            await github.rest.repos.createRelease({
+              owner,
+              repo,
+              tag_name: process.env.RELEASE_TAG,
+              name: process.env.RELEASE_TAG,
+              body: notes,
+              draft: false,
+              prerelease: false,
+              generate_release_notes: false,
+            })
+            const deployment = await github.rest.repos.createDeployment({
+              owner,
+              repo,
+              ref: process.env.RELEASE_TAG,
+              sha: targetSha,
+              task: 'production-release',
+              auto_merge: false,
+              required_contexts: [],
+              environment: 'production',
+              production_environment: true,
+              description: `DINA production release ${process.env.RELEASE_TAG}`,
+              payload: {
+                releaseTag: process.env.RELEASE_TAG,
+                commitSha: targetSha,
+                cloudflareVersionId: process.env.CLOUDFLARE_VERSION_ID,
+                productionRunId: String(context.runId),
+              },
+            })
+            await github.rest.repos.createDeploymentStatus({
+              owner,
+              repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              environment: 'production',
+              environment_url: process.env.PRODUCTION_ORIGIN,
+              description: 'Production release evidence published successfully.',
+            })
+      - id: rollback
+        name: Roll back the Worker after a failed smoke or guardrail
+        if: failure() && steps.upload.outputs.version_id != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ROLLBACK_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          ROLLBACK_WORKER_NAME: ${{ env.WORKER_NAME }}
+          ROLLBACK_RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
+          SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
+          SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
+          SMOKE_EXPECTED_RELEASE: ${{ steps.preflight.outputs.previous_release_tag }}
+        run: bun run scripts/retry-release-smoke.ts rollback
+      - name: Record production rollout and rollback outcome
+        if: always() && steps.upload.outputs.version_id != ''
+        env:
+          ROLLOUT_RESULT: ${{ steps.standard_guardrails.outcome == 'failure' && 'standard:100%-guardrails-failed' || steps.standard_guardrails.outputs.result || steps.rollout.outputs.result || 'failed before rollout result' }}
+          ROLLBACK_OUTCOME: ${{ steps.rollback.outcome }}
+        run: |
+          {
+            echo "### Production rollout outcome"
+            echo "- Result: $ROLLOUT_RESULT"
+            echo "- Rollback verification: ${ROLLBACK_OUTCOME:-not required}"
+          } >> "$GITHUB_STEP_SUMMARY"
