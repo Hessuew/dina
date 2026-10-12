@@ -36,6 +36,15 @@ describe('mutation error handling', () => {
     expect(captureBrowserSentryException).not.toHaveBeenCalled()
   })
 
+  it.each([
+    new Error('Not authenticated'),
+    new Error('Points cannot exceed the question maximum (1)'),
+  ])('does not capture expected serialized server mutation errors', (error) => {
+    reportMutationError(error)
+
+    expect(captureBrowserSentryException).not.toHaveBeenCalled()
+  })
+
   it('shows generic text instead of raw unexpected error details', () => {
     toastErrorHandler(new Error('Failed query: insert into submissions'))
 
