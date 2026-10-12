@@ -84,7 +84,15 @@ function GradePointsControls({
         min={0}
         max={maxPoints}
         value={points}
-        onChange={(event) => setPoints(Number(event.target.value))}
+        onChange={(event) =>
+          setPoints(
+            // Scores are integer points, matching the server input schema.
+            Math.trunc(
+              Math.min(maxPoints, Math.max(0, Number(event.target.value) || 0)),
+            ),
+          )
+        }
+        step={1}
         className="w-24"
       />
       <Button
