@@ -553,6 +553,10 @@ feature consumes them.
   - `library.ts` - Authenticated media-library reads and mutations. The service
     derives the viewer role from the persisted profile; adapters pass only the
     authenticated actor ID, and private upload paths remain actor-owned.
+    `library/domain/library-prefs.domain.ts` owns the pure shape and mutations of
+    the per-user device-local library prefs blob (stars, recently viewed,
+    reading position) persisted by `src/hooks/useLibraryPrefs.ts` in
+    `localStorage` under `dina:library:{userId}:prefs`.
   - `teachers.ts` - Authenticated teacher directory reads; the service requires
     a persisted profile and carries the actor through internal callers.
   - `posts.ts` - Authenticated community post/channel/comment reads and

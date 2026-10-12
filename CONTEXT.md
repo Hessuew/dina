@@ -251,3 +251,16 @@ Each file becomes non-downloadable Document media with no course, description, o
 Folder hierarchy and relative paths exist only as browser selection/review metadata; they are not
 persisted and do not create library structure. Imports reuse the private signed direct-upload flow
 from ADR 0022 and the eBook semantics from ADR 0002.
+
+### Library Prefs
+
+Per-user, **device-local** browser state (`localStorage`, key `dina:library:{userId}:prefs`) holding
+three pieces of reader state — never sent to the server, never synced across devices:
+
+- **Starred** — Media Library items the user pinned for quick access. Rendered as the top
+  "Starred" shelf on `/library`, most recently starred first; the shelf stays visible (muted,
+  with a hint) even when empty so users discover the feature.
+- **Recently viewed** — the last 12 Media Library items opened, most recent first, rendered as a
+  "Recently viewed" shelf above topic shelves; hidden when empty.
+- **Reading position** — last-read PDF page per media item; reopening a document resumes at that
+  page. Page 1 is stored as "no entry".

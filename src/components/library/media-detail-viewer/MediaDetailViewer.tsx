@@ -87,6 +87,8 @@ type MediaDetailViewerProps = {
     'title' | 'description' | 'fileType' | 'fileUrl' | 'allowsDownload'
   >
   viewerUrl: string | null
+  initialPage?: number | null
+  onPageChange?: (page: number) => void
 }
 
 function MediaDescription({ description }: { description: string | null }) {
@@ -195,7 +197,15 @@ function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
   )
 }
 
-function PdfContent({ viewerUrl }: { viewerUrl: string | null }) {
+function PdfContent({
+  viewerUrl,
+  initialPage,
+  onPageChange,
+}: {
+  viewerUrl: string | null
+  initialPage?: number | null
+  onPageChange?: (page: number) => void
+}) {
   if (!viewerUrl) {
     return (
       <p className="px-6 py-8 text-sm text-[#8E816D]">Document unavailable.</p>
@@ -211,7 +221,11 @@ function PdfContent({ viewerUrl }: { viewerUrl: string | null }) {
           </div>
         }
       >
-        <PdfViewer url={viewerUrl} />
+        <PdfViewer
+          url={viewerUrl}
+          initialPage={initialPage}
+          onPageChange={onPageChange}
+        />
       </Suspense>
     </div>
   )
@@ -238,10 +252,14 @@ function MediaContent({
   viewModel,
   media,
   viewerUrl,
+  initialPage,
+  onPageChange,
 }: {
   viewModel: MediaContentViewModel
   media: MediaDetailViewerProps['media']
   viewerUrl: string | null
+  initialPage?: number | null
+  onPageChange?: (page: number) => void
 }) {
   const { kind, videoId } = viewModel
 
@@ -251,7 +269,13 @@ function MediaContent({
     ),
     'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
     'uploaded-video': <UploadedVideoContent viewerUrl={viewerUrl} />,
-    pdf: <PdfContent viewerUrl={viewerUrl} />,
+    pdf: (
+      <PdfContent
+        viewerUrl={viewerUrl}
+        initialPage={initialPage}
+        onPageChange={onPageChange}
+      />
+    ),
     office: <OfficeContent viewerUrl={viewerUrl} />,
     none: (
       <p className="px-6 py-8 text-sm text-[#8E816D]">
@@ -266,6 +290,8 @@ function MediaContent({
 export function MediaDetailViewer({
   media,
   viewerUrl,
+  initialPage,
+  onPageChange,
 }: MediaDetailViewerProps) {
   const viewModel = buildMediaContentViewModel(media)
   const isVideo =
@@ -296,6 +322,8 @@ export function MediaDetailViewer({
           viewModel={viewModel}
           media={media}
           viewerUrl={viewerUrl}
+          initialPage={initialPage}
+          onPageChange={onPageChange}
         />
       </div>
     </>

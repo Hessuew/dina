@@ -9,6 +9,8 @@ import {
   getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
   getYoutubeThumbnail,
+  resolveMediaByIds,
+  resolveShelfManageActions,
 } from '@/utils/library/domain/library-view.domain'
 
 const makeRow = (
@@ -200,5 +202,65 @@ describe('getVisibleShelfTopics', () => {
   it('returns no topics for empty media', () => {
     const { shelfTopics } = getVisibleShelfTopics([])
     expect(shelfTopics).toEqual([])
+  })
+
+  it('pins the Lectures topic shelf first', () => {
+    const media = [
+      makeRow({ id: 'a', category: 'Wisdom', fileType: 'video' }),
+      makeRow({ id: 'b', category: 'Lectures', fileType: 'video' }),
+      makeRow({ id: 'c', category: 'Faith', fileType: 'video' }),
+    ]
+    const { shelfTopics } = getVisibleShelfTopics(media)
+    expect(shelfTopics[0]).toBe('Lectures')
+    expect(shelfTopics).toEqual(['Lectures', 'Faith', 'Wisdom'])
+  })
+})
+
+describe('resolveShelfManageActions', () => {
+  const onEdit = () => {}
+  const onDelete = () => {}
+  const manager = { canEdit: true, isCourseTeacher: true }
+
+  it('returns actions when permissions and both handlers exist', () => {
+    const result = resolveShelfManageActions(manager, onEdit, onDelete)
+    expect(result).toEqual({
+      canEdit: true,
+      isCourseTeacher: true,
+      onEditMedia: onEdit,
+      onDeleteMedia: onDelete,
+    })
+  })
+
+  it('returns null without permissions or when not a course teacher', () => {
+    expect(resolveShelfManageActions(undefined, onEdit, onDelete)).toBeNull()
+    expect(
+      resolveShelfManageActions(
+        { canEdit: true, isCourseTeacher: false },
+        onEdit,
+        onDelete,
+      ),
+    ).toBeNull()
+    expect(
+      resolveShelfManageActions(
+        { canEdit: false, isCourseTeacher: true },
+        onEdit,
+        onDelete,
+      ),
+    ).toBeNull()
+  })
+
+  it('returns null when either handler is missing', () => {
+    expect(resolveShelfManageActions(manager, undefined, onDelete)).toBeNull()
+    expect(resolveShelfManageActions(manager, onEdit, undefined)).toBeNull()
+  })
+})
+
+describe('resolveMediaByIds', () => {
+  it('resolves ids to rows in id order, dropping missing entries', () => {
+    const media = [makeRow({ id: 'a' }), makeRow({ id: 'b' })]
+    expect(
+      resolveMediaByIds(['b', 'gone', 'a'], media).map((r) => r.id),
+    ).toEqual(['b', 'a'])
+    expect(resolveMediaByIds([], media)).toEqual([])
   })
 })

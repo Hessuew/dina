@@ -1,15 +1,18 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useCallback, useEffect } from 'react'
 import type { Role } from '@/utils/authz/types'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
+import { StarToggle } from '@/components/library/StarToggle'
 import { cn } from '@/lib/utils'
 import { getLibraryMediaItem } from '@/utils/library'
 import { useDialogState } from '@/hooks/useDialogState'
+import { useLibraryPrefs } from '@/hooks/useLibraryPrefs'
 import { MediaDetailViewer } from '@/components/library/media-detail-viewer/MediaDetailViewer'
 import { shouldShowDownloadableChip } from '@/utils/library/domain/library.domain'
+import { isMediaStarred } from '@/utils/library/domain/library-prefs.domain'
 
 const MediaDialog = lazy(() =>
   import('@/components/dialog/media-dialog/MediaDialog').then((module) => ({
@@ -70,6 +73,81 @@ function MediaDetailHeaderMetadata({
   )
 }
 
+function MediaHeaderActions({
+  starred,
+  prefsLoaded,
+  onToggleStar,
+  media,
+  permissions,
+  onEdit,
+  onDelete,
+}: {
+  starred: boolean
+  prefsLoaded: boolean
+  onToggleStar: () => void
+  media: MediaLibraryRow
+  permissions: { canEdit: boolean; isCourseTeacher: boolean }
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <StarToggle
+        starred={starred}
+        onToggle={onToggleStar}
+        theme="light"
+        className={cn(!prefsLoaded && 'pointer-events-none opacity-0')}
+      />
+      <EntityHeaderActions
+        status={media.isPublished ? 'published' : 'draft'}
+        canEdit={permissions.canEdit}
+        isCourseTeacher={permissions.isCourseTeacher}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+}
+
+function MediaDetailDialog({
+  dialogMode,
+  dialogMedia,
+  closeDialog,
+  onDeleted,
+}: {
+  dialogMode: 'create' | 'edit' | 'delete'
+  dialogMedia: MediaLibraryRow | undefined
+  closeDialog: () => void
+  onDeleted: () => void
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-12 text-center text-sm text-[#8E816D]">
+          Loading media editor…
+        </div>
+      }
+    >
+      <MediaDialog
+        key={`${dialogMode}-${dialogMedia?.id}`}
+        open
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog()
+          }
+        }}
+        mode={dialogMode}
+        media={dialogMedia}
+        onSuccess={() => {
+          if (dialogMode === 'delete') {
+            onDeleted()
+          }
+        }}
+      />
+    </Suspense>
+  )
+}
+
 function MediaDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
@@ -81,6 +159,17 @@ function MediaDetailComponent() {
     openDialog,
     closeDialog,
   } = useDialogState<typeof media>()
+  const { prefs, loaded, toggleStar, recordView, savePosition } =
+    useLibraryPrefs(viewer.id)
+
+  useEffect(() => {
+    if (loaded) recordView(media.id)
+  }, [loaded, media.id, recordView])
+
+  const onPageChange = useCallback(
+    (page: number) => savePosition(media.id, page),
+    [media.id, savePosition],
+  )
 
   return (
     <PageLayout>
@@ -91,43 +180,32 @@ function MediaDetailComponent() {
           <MediaDetailHeaderMetadata media={media} role={viewer.role} />
         }
         actions={
-          <EntityHeaderActions
-            status={media.isPublished ? 'published' : 'draft'}
-            canEdit={permissions.canEdit}
-            isCourseTeacher={permissions.isCourseTeacher}
+          <MediaHeaderActions
+            starred={isMediaStarred(prefs, media.id)}
+            prefsLoaded={loaded}
+            onToggleStar={() => toggleStar(media.id)}
+            media={media}
+            permissions={permissions}
             onEdit={() => openDialog('edit', media)}
             onDelete={() => openDialog('delete', media)}
           />
         }
       />
 
-      <MediaDetailViewer media={media} viewerUrl={viewerUrl} />
+      <MediaDetailViewer
+        media={media}
+        viewerUrl={viewerUrl}
+        initialPage={loaded ? (prefs.positions[media.id] ?? 1) : null}
+        onPageChange={onPageChange}
+      />
 
       {isOpen && (
-        <Suspense
-          fallback={
-            <div className="py-12 text-center text-sm text-[#8E816D]">
-              Loading media editor…
-            </div>
-          }
-        >
-          <MediaDialog
-            key={`${dialogMode}-${dialogMedia?.id}`}
-            open
-            onOpenChange={(open) => {
-              if (!open) {
-                closeDialog()
-              }
-            }}
-            mode={dialogMode as 'create' | 'edit' | 'delete'}
-            media={dialogMedia}
-            onSuccess={() => {
-              if (dialogMode === 'delete') {
-                router.history.back()
-              }
-            }}
-          />
-        </Suspense>
+        <MediaDetailDialog
+          dialogMode={dialogMode as 'create' | 'edit' | 'delete'}
+          dialogMedia={dialogMedia}
+          closeDialog={closeDialog}
+          onDeleted={() => router.history.back()}
+        />
       )}
     </PageLayout>
   )
