@@ -11,10 +11,15 @@ export async function findAllAssignments() {
   return db.query.assignments.findMany()
 }
 
-export async function findPublishedAssignments() {
+/**
+ * Assignments any signed-in viewer may see: `published` and `closed`.
+ * Drafts stay staff-only. Used by the student list, teacher catalog, and
+ * calendar — closed rows are read-only for non-managers downstream.
+ */
+export async function findPublishedOrClosedAssignments() {
   const db = await getDb()
   return db.query.assignments.findMany({
-    where: eq(assignments.status, 'published'),
+    where: inArray(assignments.status, ['published', 'closed']),
     orderBy: (assignment, { asc }) => [asc(assignment.dueDate)],
   })
 }

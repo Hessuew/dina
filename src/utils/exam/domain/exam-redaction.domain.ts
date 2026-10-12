@@ -21,20 +21,27 @@ export function redactOptionsForStudent(
 
 export type StudentAttempt = Omit<
   AttemptRow,
-  'autoScore' | 'manualScore' | 'totalScore' | 'gradedBy'
+  'autoScore' | 'manualScore' | 'totalScore' | 'gradedBy' | 'feedback'
 > & {
   autoScore: number | null
   manualScore: number | null
   totalScore: number | null
+  feedback: string | null
 }
 
-/** Scores stay hidden from the student until the attempt is graded. */
+/** Scores and grader feedback stay hidden from the student until the attempt is graded. */
 export function redactAttemptForStudent(attempt: AttemptRow): StudentAttempt {
   const { gradedBy: _gradedBy, ...rest } = attempt
   if (attempt.status === 'graded') {
     return rest
   }
-  return { ...rest, autoScore: null, manualScore: null, totalScore: null }
+  return {
+    ...rest,
+    autoScore: null,
+    manualScore: null,
+    totalScore: null,
+    feedback: null,
+  }
 }
 
 type AnswerRow = {

@@ -1126,7 +1126,7 @@ export async function finalizeGradingService(
       )
     }
     const scores = computeAttemptScores(answers, questions)
-    await markAttemptGraded(
+    const graded = await markAttemptGraded(
       attempt.id,
       {
         autoScore: scores.autoScore,
@@ -1134,7 +1134,11 @@ export async function finalizeGradingService(
         totalScore: scores.totalScore,
       },
       userId,
+      data.feedback || null,
     )
+    if (!graded) {
+      throw new ConflictError('Only submitted attempts can be finalized')
+    }
     logExamGradingEvent('info', 'exam_grading_finalized', context, {
       status: 'graded',
     })

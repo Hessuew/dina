@@ -31,6 +31,7 @@ function attempt(overrides: Partial<AttemptRow>): AttemptRow {
     autoScore: 3,
     manualScore: 4,
     totalScore: 7,
+    feedback: null,
     createdAt: new Date('2026-07-04T10:00:00Z'),
     updatedAt: new Date('2026-07-04T10:00:00Z'),
     ...overrides,
@@ -66,6 +67,17 @@ describe('redactAttemptForStudent', () => {
     expect(redacted.totalScore).toBe(7)
     expect(redacted.autoScore).toBe(3)
     expect(redacted.manualScore).toBe(4)
+  })
+
+  it('hides feedback until the attempt is graded', () => {
+    const redacted = redactAttemptForStudent(
+      attempt({ status: 'submitted', feedback: 'Draft notes' }),
+    )
+    expect(redacted.feedback).toBeNull()
+    expect(
+      redactAttemptForStudent(attempt({ status: 'graded', feedback: 'Nice' }))
+        .feedback,
+    ).toBe('Nice')
   })
 
   it('never exposes gradedBy', () => {

@@ -3,11 +3,16 @@ import type { ExamAttemptStatus } from '@/utils/exam/domain/exam-lifecycle.domai
 export type SubmittedPanelView = {
   heading: string
   scoreText: string | null
+  feedback: string | null
 }
 
-/** Heading and score line for the post-submission panel; score only when graded. */
+/** Heading, score line, and grader feedback for the post-submission panel; score and feedback only when graded. */
 export function submittedPanelView(
-  attempt: { status: ExamAttemptStatus; totalScore: number | null },
+  attempt: {
+    status: ExamAttemptStatus
+    totalScore: number | null
+    feedback: string | null
+  },
   maxScore: number,
 ): SubmittedPanelView {
   const graded = attempt.status === 'graded'
@@ -17,5 +22,6 @@ export function submittedPanelView(
       graded && attempt.totalScore !== null
         ? `${attempt.totalScore} / ${maxScore}`
         : null,
+    feedback: graded ? attempt.feedback : null,
   }
 }

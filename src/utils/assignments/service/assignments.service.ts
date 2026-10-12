@@ -14,7 +14,7 @@ import {
   canDeleteAssignment,
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
-import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
+import { isAssignmentVisibleToViewer } from '@/utils/assignments/domain/assignment-detail.domain'
 import { buildStudentAssignments } from '@/utils/assignments/domain/student-assignments.domain'
 import {
   buildTeacherAssignmentRows,
@@ -33,7 +33,7 @@ import {
   findLessonIdsByCourseIds,
   findLessonsByIds,
   findProfilesByIds,
-  findPublishedAssignments,
+  findPublishedOrClosedAssignments,
   findStudentSubmissions,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
@@ -44,7 +44,7 @@ import {
   findTeacherIdsByCourseIds,
   insertAssignment,
   updateAssignmentById,
-  updateSubmission,
+  updateDraftSubmission,
   updateSubmissionGrade,
   upsertSubmission,
 } from '@/utils/repository'
@@ -54,6 +54,7 @@ import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AppError,
   AuthorizationError,
+  ConflictError,
   NotFoundError,
   UNEXPECTED_ERROR_MESSAGE,
   ValidationError,
@@ -217,11 +218,12 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     })
   }
 
-  const visibleAssignments = permissions.canManage
-    ? lesson.assignments
-    : lesson.assignments.filter(
-        (assignment) => assignment.status === 'published',
-      )
+  const visibleAssignments = lesson.assignments.filter((assignment) =>
+    isAssignmentVisibleToViewer({
+      canManage: permissions.canManage,
+      status: assignment.status,
+    }),
+  )
 
   return {
     lesson: {
@@ -305,7 +307,7 @@ async function findAssignmentWithCourseTeachers(assignmentId: string) {
 }
 
 async function findPublishedAssignmentsForStudent(studentId: string) {
-  const assignments = await findPublishedAssignments()
+  const assignments = await findPublishedOrClosedAssignments()
   const assignmentIds = assignments.map((assignment) => assignment.id)
   const [lessons, submissions] = await Promise.all([
     findLessonsByIds(assignments.map((assignment) => assignment.lessonId)),
@@ -367,14 +369,13 @@ async function loadAssignmentForViewer(
     (!assignment.lesson.isPublished || !assignment.lesson.course.isPublished)
   if (
     hiddenByUnpublishedParent ||
-    (assignment.status !== 'published' &&
-      !canOpenUnpublishedAssignment({
-        role: profile.role,
-        canManage: permissions.canManage,
-      }))
+    !isAssignmentVisibleToViewer({
+      canManage: permissions.canManage,
+      status: assignment.status,
+    })
   ) {
     throw new AuthorizationError('Assignment not available', {
-      internalMessage: `Non-manager attempted to access unpublished assignment: ${data.assignmentId}`,
+      internalMessage: `Non-manager attempted to access restricted assignment: ${data.assignmentId}`,
       details: { assignmentId: data.assignmentId, status: assignment.status },
     })
   }
@@ -759,12 +760,24 @@ async function persistSubmission(
   >,
 ) {
   if (existingSubmission) {
-    return updateSubmission(existingSubmission.id, {
+    const updated = await updateDraftSubmission(existingSubmission.id, {
       content: data.content || null,
       status: data.submit ? 'submitted' : 'draft',
       submittedAt: data.submit ? new Date() : existingSubmission.submittedAt,
       updatedAt: new Date(),
     })
+    if (!updated) {
+      throw new ConflictError(
+        'Submission already submitted and can no longer be changed',
+        {
+          details: {
+            assignmentId: data.assignmentId,
+            submissionId: existingSubmission.id,
+          },
+        },
+      )
+    }
+    return updated
   }
   return upsertSubmission({
     assignmentId: data.assignmentId,
@@ -817,6 +830,33 @@ function mapSubmissionPersistenceError(
     details: { assignmentId, userId },
     cause: error,
   })
+}
+
+/** Loads the student's submission and rejects writes once it is past draft. */
+async function findEditableSubmission(
+  data: CreateOrUpdateSubmissionInput,
+  userId: string,
+  startedAt: number,
+) {
+  const existing = await withAssignmentSubmissionReadTelemetry(
+    data.assignmentId,
+    userId,
+    startedAt,
+    () => findSubmissionByAssignmentAndStudent(data.assignmentId, userId),
+  )
+  if (existing && existing.status !== 'draft') {
+    throw new ConflictError(
+      'Submission already submitted and can no longer be changed',
+      {
+        details: {
+          assignmentId: data.assignmentId,
+          submissionId: existing.id,
+          submissionStatus: existing.status,
+        },
+      },
+    )
+  }
+  return existing
 }
 
 async function saveSubmission(
@@ -900,11 +940,10 @@ export async function createOrUpdateSubmissionService(
 
   validateSubmissionWindow(assignment, new Date())
 
-  const existingSubmission = await withAssignmentSubmissionReadTelemetry(
-    data.assignmentId,
+  const existingSubmission = await findEditableSubmission(
+    data,
     userId,
     startedAt,
-    () => findSubmissionByAssignmentAndStudent(data.assignmentId, userId),
   )
   const submission = await saveSubmission(
     data,
@@ -1045,7 +1084,7 @@ async function getTeacherCatalogAssignments(
       ? await findLessonIdsByCourseIds(managedCourseIds)
       : []
   const [publishedAssignments, managedAssignments] = await Promise.all([
-    findPublishedAssignments(),
+    findPublishedOrClosedAssignments(),
     findAssignmentsByLessonIdsOrdered(managedLessonIds),
   ])
   const assignments = mergeTeacherCatalogAssignments(
