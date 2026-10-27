@@ -1037,9 +1037,10 @@ describe('exam taking (integration)', () => {
     expect(JSON.stringify(answerEvents)).not.toContain(correctOptionId)
     expect(JSON.stringify(answerEvents)).not.toContain('private exam response')
 
-    vi.spyOn(sharedRepository, 'upsertExamAnswer').mockRejectedValueOnce(
-      new Error('answer database secret'),
-    )
+    vi.spyOn(
+      sharedRepository,
+      'upsertExamAnswerInTransaction',
+    ).mockRejectedValueOnce(new Error('answer database secret'))
     await expect(
       saveAnswerService(
         {
@@ -1400,9 +1401,10 @@ describe('exam grading (integration)', () => {
     )
     expect(openAnswer).toBeDefined()
 
-    vi.spyOn(sharedRepository, 'updateExamAnswerGrade').mockRejectedValueOnce(
-      new Error('grading database secret'),
-    )
+    vi.spyOn(
+      sharedRepository,
+      'updateExamAnswerGradeInTransaction',
+    ).mockRejectedValueOnce(new Error('grading database secret'))
     await expect(
       gradeOpenAnswerService(
         { answerId: openAnswer!.id, awardedPoints: 4 },
@@ -1428,9 +1430,10 @@ describe('exam grading (integration)', () => {
       { answerId: openAnswer!.id, awardedPoints: 4 },
       teacherId,
     )
-    vi.spyOn(sharedRepository, 'markAttemptGraded').mockRejectedValueOnce(
-      new Error('finalize database secret'),
-    )
+    vi.spyOn(
+      sharedRepository,
+      'markAttemptGradedInTransaction',
+    ).mockRejectedValueOnce(new Error('finalize database secret'))
     await expect(
       finalizeGradingService({ attemptId }, teacherId),
     ).rejects.toThrow('finalize database secret')
@@ -1482,16 +1485,30 @@ describe('exam grading (integration)', () => {
       role: 'student',
       fullName: 'Student Name',
     })
+    const otherStudentId = await seedProfile({
+      role: 'student',
+      fullName: 'Other Student',
+    })
     const { examId } = await seedPublishedMcExam(teacherId)
     await seedExamAttempt({
       examId,
       studentId,
       deadlineAt: new Date(Date.now() - 5 * 60_000),
     })
+    await seedExamAttempt({
+      examId,
+      studentId: otherStudentId,
+      deadlineAt: new Date(Date.now() - 60_000),
+    })
     const attempts = await listAttemptsForGradingService({ examId }, teacherId)
-    expect(attempts).toHaveLength(1)
-    expect(attempts[0].status).toBe('submitted')
-    expect(attempts[0].studentName).toBe('Student Name')
+    expect(attempts).toHaveLength(2)
+    expect(attempts.map((attempt) => attempt.status)).toEqual([
+      'submitted',
+      'submitted',
+    ])
+    expect(attempts.map((attempt) => attempt.studentName)).toEqual(
+      expect.arrayContaining(['Student Name', 'Other Student']),
+    )
   })
 
   it('404s for a missing attempt', async () => {
@@ -1949,5 +1966,386 @@ describe('exam answer-key rescore (integration)', () => {
     expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
       0,
     )
+  })
+
+  it('rejects deleting a question students already answered, preserving it', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId, openQuestionId } =
+      await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Delete answered question',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              questionId: openQuestionId,
+              type: 'open_ended',
+              prompt: 'Essay',
+              orderIndex: 1,
+              points: 5,
+            },
+          ],
+          deletedQuestionIds: [mcQuestionId],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // The whole save was rejected: question, options, submitted answer, and
+    // score are all preserved.
+    const questions = await sharedRepository.findExamQuestionsByExamId(examId)
+    expect(questions.map((question) => question.id).sort()).toEqual(
+      [mcQuestionId, openQuestionId].sort(),
+    )
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(answers).toHaveLength(1)
+    expect(answers[0]).toMatchObject({
+      questionId: mcQuestionId,
+      selectedOptionId: correctOptionId,
+      isCorrect: true,
+      awardedPoints: 2,
+    })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      2,
+    )
+  })
+
+  it('rejects retyping a question students already answered, preserving the manual grade', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+      openQuestionId,
+    })
+    const openAnswer = (
+      await sharedRepository.findExamAnswersByAttempt(attemptId)
+    ).find((answer) => answer.questionId === openQuestionId)!
+    await gradeOpenAnswerService(
+      { answerId: openAnswer.id, awardedPoints: 4 },
+      teacherId,
+    )
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Retype answered question',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice',
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                {
+                  id: wrongOptionId,
+                  label: 'B',
+                  orderIndex: 1,
+                  isCorrect: false,
+                },
+              ],
+            },
+            {
+              questionId: openQuestionId,
+              type: 'multiple_choice',
+              prompt: 'Essay',
+              orderIndex: 1,
+              points: 5,
+              options: [
+                { label: 'A', orderIndex: 0, isCorrect: true },
+                { label: 'B', orderIndex: 1, isCorrect: false },
+              ],
+            },
+          ],
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // Type and the grader's award are both preserved.
+    const persisted = (
+      await sharedRepository.findExamQuestionsByExamId(examId)
+    ).find((question) => question.id === openQuestionId)!
+    expect(persisted.type).toBe('open_ended')
+    expect(
+      (await sharedRepository.findExamAnswersByAttempt(attemptId)).find(
+        (answer) => answer.questionId === openQuestionId,
+      ),
+    ).toMatchObject({ awardedPoints: 4 })
+  })
+
+  it('rejects reducing points below an awarded open-answer grade', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+      openQuestionId,
+    })
+    const openAnswer = (
+      await sharedRepository.findExamAnswersByAttempt(attemptId)
+    ).find((answer) => answer.questionId === openQuestionId)!
+    await gradeOpenAnswerService(
+      { answerId: openAnswer.id, awardedPoints: 4 },
+      teacherId,
+    )
+    await finalizeGradingService({ attemptId }, teacherId)
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Shrink open question points',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice',
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                {
+                  id: wrongOptionId,
+                  label: 'B',
+                  orderIndex: 1,
+                  isCorrect: false,
+                },
+              ],
+            },
+            {
+              questionId: openQuestionId,
+              type: 'open_ended',
+              prompt: 'Essay',
+              orderIndex: 1,
+              points: 2,
+            },
+          ],
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // Points, the manual grade, and the finalized totals are all unchanged.
+    const persisted = (
+      await sharedRepository.findExamQuestionsByExamId(examId)
+    ).find((question) => question.id === openQuestionId)!
+    expect(persisted.points).toBe(5)
+    expect(
+      (await sharedRepository.findExamAnswersByAttempt(attemptId)).find(
+        (answer) => answer.questionId === openQuestionId,
+      ),
+    ).toMatchObject({ awardedPoints: 4 })
+    expect(await sharedRepository.findAttemptById(attemptId)).toMatchObject({
+      manualScore: 4,
+      totalScore: 6,
+    })
+  })
+
+  it('rescales multiple-choice awards when question points change', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await saveExamChangesService(
+      {
+        examId,
+        title: exam.title,
+        durationMinutes: exam.durationMinutes,
+        opensAt: exam.opensAt.toISOString(),
+        closesAt: exam.closesAt.toISOString(),
+        questions: [
+          {
+            questionId: mcQuestionId,
+            type: 'multiple_choice',
+            prompt: 'Pick A',
+            orderIndex: 0,
+            points: 3,
+            options: [
+              {
+                id: correctOptionId,
+                label: 'A',
+                orderIndex: 0,
+                isCorrect: true,
+              },
+              {
+                id: wrongOptionId,
+                label: 'B',
+                orderIndex: 1,
+                isCorrect: false,
+              },
+            ],
+          },
+          {
+            questionId: openQuestionId,
+            type: 'open_ended',
+            prompt: 'Essay',
+            orderIndex: 1,
+            points: 5,
+          },
+        ],
+        deletedQuestionIds: [],
+      },
+      adminId,
+    )
+
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(
+      answers.find((answer) => answer.questionId === mcQuestionId),
+    ).toMatchObject({ isCorrect: true, awardedPoints: 3 })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      3,
+    )
+  })
+
+  it('leaves completed attempts untouched when only exam meta changes', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+    const gradeWriteSpy = vi.spyOn(
+      sharedRepository,
+      'updateExamAnswerAutoGradesInTransaction',
+    )
+    const scoreWriteSpy = vi.spyOn(
+      sharedRepository,
+      'updateExamAttemptScoresInTransaction',
+    )
+
+    await saveExamChangesService(
+      {
+        examId,
+        title: 'Meta-only rename',
+        durationMinutes: exam.durationMinutes,
+        opensAt: exam.opensAt.toISOString(),
+        closesAt: exam.closesAt.toISOString(),
+        questions: [
+          {
+            questionId: mcQuestionId,
+            type: 'multiple_choice',
+            prompt: 'Pick A, reworded',
+            orderIndex: 0,
+            points: 2,
+            options: [
+              {
+                id: correctOptionId,
+                label: 'A, reworded',
+                orderIndex: 0,
+                isCorrect: true,
+              },
+              {
+                id: wrongOptionId,
+                label: 'B',
+                orderIndex: 1,
+                isCorrect: false,
+              },
+            ],
+          },
+          {
+            questionId: openQuestionId,
+            type: 'open_ended',
+            prompt: 'Essay',
+            orderIndex: 1,
+            points: 5,
+          },
+        ],
+        deletedQuestionIds: [],
+      },
+      adminId,
+    )
+
+    expect((await sharedRepository.findExamById(examId))!.title).toBe(
+      'Meta-only rename',
+    )
+    expect(gradeWriteSpy).not.toHaveBeenCalled()
+    expect(scoreWriteSpy).not.toHaveBeenCalled()
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(
+      answers.find((answer) => answer.questionId === mcQuestionId),
+    ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
   })
 })

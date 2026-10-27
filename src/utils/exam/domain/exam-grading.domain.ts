@@ -139,6 +139,56 @@ export function rescoreCompletedAttempt(
 }
 
 /**
+ * Whether an authoring save changes anything a score could depend on: an
+ * added or deleted question, a question's points or type, or the set of
+ * correct options on a kept question. Prompt, label, order, and exam-meta
+ * edits leave completed attempts untouched, so the rescore is skipped.
+ */
+export function hasScoreRelevantEdits(input: {
+  questions: Array<{
+    questionId?: string
+    type: ExamQuestionType
+    points: number
+    options: Array<{ id?: string; isCorrect?: boolean }>
+  }>
+  deletedQuestionIds: Array<string>
+  existingQuestions: Array<GradableQuestion>
+  existingOptions: Array<GradableOption>
+}): boolean {
+  if (input.deletedQuestionIds.length > 0) return true
+  const existingById = new Map(
+    input.existingQuestions.map((question) => [question.id, question]),
+  )
+  const correctByQuestion = new Map<string, Set<string>>()
+  for (const option of input.existingOptions) {
+    if (!option.isCorrect) continue
+    const correct = correctByQuestion.get(option.questionId) ?? new Set()
+    correct.add(option.id)
+    correctByQuestion.set(option.questionId, correct)
+  }
+  return input.questions.some((question) => {
+    if (!question.questionId) return true
+    const existing = existingById.get(question.questionId)
+    if (!existing) return true
+    if (existing.type !== question.type || existing.points !== question.points)
+      return true
+    if (question.options.some((option) => option.isCorrect && !option.id))
+      return true
+    const nextCorrect = new Set(
+      question.options.flatMap((option) =>
+        option.isCorrect && option.id ? [option.id] : [],
+      ),
+    )
+    const previousCorrect =
+      correctByQuestion.get(question.questionId) ?? new Set()
+    return (
+      nextCorrect.size !== previousCorrect.size ||
+      [...nextCorrect].some((id) => !previousCorrect.has(id))
+    )
+  })
+}
+
+/**
  * Grading may only be finalized once every open-ended question that was
  * ANSWERED has an explicit awardedPoints. Unanswered open questions score
  * zero without needing a grade.

@@ -1,6 +1,7 @@
 import type {
   ExamAnswerRow,
   ExamQuestionOptionInput,
+  ExamQuestionOptionRow,
   ExamQuestionRow,
   RepositoryTransactionClient,
 } from '@/utils/repository'
@@ -9,18 +10,23 @@ import {
   deleteExamQuestionsInTransaction,
   findCompletedAttemptsByExamInTransaction,
   findExamAnswerOptionSelectionsInTransaction,
+  findExamAnswerStatsByQuestionIdsInTransaction,
   findExamAnswersByAttemptIdsInTransaction,
   findExamQuestionOptionsByQuestionIdsInTransaction,
   findExamQuestionsByExamIdInTransaction,
   findExistingExamQuestionIdsInTransaction,
   insertExamQuestionInTransaction,
+  lockExamInTransaction,
   replaceExamQuestionOptionsInTransaction,
-  updateExamAnswerAutoGradeInTransaction,
+  updateExamAnswerAutoGradesInTransaction,
   updateExamAttemptScoresInTransaction,
   updateExamInTransaction,
   updateExamQuestionInTransaction,
 } from '@/utils/repository'
-import { rescoreCompletedAttempt } from '@/utils/exam/domain/exam-grading.domain'
+import {
+  hasScoreRelevantEdits,
+  rescoreCompletedAttempt,
+} from '@/utils/exam/domain/exam-grading.domain'
 
 /* v8 ignore start */
 type ExamChangesQuestion = {
@@ -127,28 +133,21 @@ async function saveQuestionsInTransaction(
 }
 
 /**
- * Option ids the edit would delete that saved answers still reference. The
- * `exam_answers.selected_option_id` FK is `ON DELETE SET NULL`, so deleting a
- * referenced option would silently erase the submitted response — these
- * removals must be rejected before any write.
+ * Option ids of kept questions the edit would delete. The
+ * `exam_answers.selected_option_id` FK is `ON DELETE SET NULL`, so deleting
+ * a referenced option would silently erase the submitted response.
  */
-async function findReferencedRemovedOptionIds(
-  tx: RepositoryTransactionClient,
-  data: SaveExamChangesData,
-): Promise<Array<string>> {
-  const updateIds = data.questions.flatMap((question) =>
-    question.questionId ? [question.questionId] : [],
-  )
-  if (updateIds.length === 0) return []
-  const existingOptions =
-    await findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds)
+function computeRemovedOptionIds(
+  questions: Array<ExamChangesQuestion>,
+  existingOptions: Array<ExamQuestionOptionRow>,
+): Array<string> {
   const existingIdsByQuestion = new Map<string, Array<string>>()
   for (const option of existingOptions) {
     const list = existingIdsByQuestion.get(option.questionId) ?? []
     list.push(option.id)
     existingIdsByQuestion.set(option.questionId, list)
   }
-  const removedIds = data.questions.flatMap((question) => {
+  return questions.flatMap((question) => {
     if (!question.questionId) return []
     const keepIds = new Set(
       question.options.flatMap((option) => (option.id ? [option.id] : [])),
@@ -157,8 +156,58 @@ async function findReferencedRemovedOptionIds(
       (optionId) => !keepIds.has(optionId),
     )
   })
-  if (removedIds.length === 0) return []
-  return findExamAnswerOptionSelectionsInTransaction(tx, removedIds)
+}
+
+/**
+ * Preservation guards that keep submitted answers intact through an
+ * authoring edit. A deleted question cascade-deletes its answers, a retyped
+ * question reclassifies them, and a points reduction below a carried-over
+ * manual award would leave totals above the question maximum — all rejected
+ * before any write. Multiple-choice points may still drop: the rescore
+ * recomputes those awards against the new maximum anyway.
+ */
+function findAnsweredEditViolation(
+  data: SaveExamChangesData,
+  existingById: Map<string, ExamQuestionRow>,
+  statsByQuestion: Map<
+    string,
+    { answerCount: number; maxAwardedPoints: number }
+  >,
+):
+  | { answeredQuestionIds: Array<string> }
+  | { retypedAnsweredQuestionIds: Array<string> }
+  | { pointsBelowAwardedQuestionIds: Array<string> }
+  | undefined {
+  const hasAnswers = (questionId: string) =>
+    (statsByQuestion.get(questionId)?.answerCount ?? 0) > 0
+  const answeredQuestionIds = data.deletedQuestionIds.filter(hasAnswers)
+  if (answeredQuestionIds.length > 0) return { answeredQuestionIds }
+  const retypedAnsweredQuestionIds = data.questions.flatMap((question) =>
+    question.questionId &&
+    hasAnswers(question.questionId) &&
+    existingById.get(question.questionId)?.type !== question.type
+      ? [question.questionId]
+      : [],
+  )
+  if (retypedAnsweredQuestionIds.length > 0) {
+    return { retypedAnsweredQuestionIds }
+  }
+  const pointsBelowAwardedQuestionIds = data.questions.flatMap((question) => {
+    const existing = question.questionId
+      ? existingById.get(question.questionId)
+      : undefined
+    return existing &&
+      existing.type === 'open_ended' &&
+      question.points < existing.points &&
+      question.points <
+        (statsByQuestion.get(existing.id)?.maxAwardedPoints ?? 0)
+      ? [existing.id]
+      : []
+  })
+  if (pointsBelowAwardedQuestionIds.length > 0) {
+    return { pointsBelowAwardedQuestionIds }
+  }
+  return undefined
 }
 
 /**
@@ -166,8 +215,9 @@ async function findReferencedRemovedOptionIds(
  * key. Submitted answers are never rewritten — only their correctness and
  * awarded points are recomputed, and attempt scores follow the lifecycle
  * shape (submitted: autoScore; graded: autoScore + manualScore + totalScore).
- * Runs inside the authoring transaction so the key change and the rescore
- * commit or roll back together.
+ * Writes are chunked bulk updates so a large cohort cannot hold the
+ * transaction open. Runs inside the authoring transaction so the key change
+ * and the rescore commit or roll back together.
  */
 async function rescoreCompletedAttemptsInTransaction(
   tx: RepositoryTransactionClient,
@@ -192,31 +242,80 @@ async function rescoreCompletedAttemptsInTransaction(
     list.push(answer)
     answersByAttempt.set(answer.attemptId, list)
   }
+  const answerUpdates: Array<{
+    answerId: string
+    isCorrect: boolean
+    awardedPoints: number
+  }> = []
+  const attemptScores: Array<{
+    attemptId: string
+    autoScore: number
+    manualScore?: number
+    totalScore?: number
+  }> = []
   for (const attempt of attempts) {
-    const rescored = rescoreCompletedAttempt(
+    const { answerUpdates: updates, ...scores } = rescoreCompletedAttempt(
       attempt.status,
       answersByAttempt.get(attempt.id) ?? [],
       questions,
       options,
     )
-    for (const update of rescored.answerUpdates) {
-      await updateExamAnswerAutoGradeInTransaction(tx, update.answerId, update)
-    }
-    await updateExamAttemptScoresInTransaction(tx, attempt.id, rescored)
+    answerUpdates.push(...updates)
+    attemptScores.push({ attemptId: attempt.id, ...scores })
   }
+  await updateExamAnswerAutoGradesInTransaction(tx, answerUpdates)
+  await updateExamAttemptScoresInTransaction(tx, attemptScores)
 }
 
 /** Saves an exam and its questions/options as one atomic authoring operation. */
 export async function saveExamChanges(data: SaveExamChangesData): Promise<{
   missingQuestionId?: string
   referencedOptionIds?: Array<string>
+  answeredQuestionIds?: Array<string>
+  retypedAnsweredQuestionIds?: Array<string>
+  pointsBelowAwardedQuestionIds?: Array<string>
 }> {
   const db = await getDb()
   return db.transaction(async (tx) => {
+    // The exams row lock comes first: every scoring transition takes the same
+    // lock before reading the key or answers, so no concurrent submit, grade,
+    // or answer can interleave between the preservation reads and the writes.
+    await lockExamInTransaction(tx, data.examId)
     const missingQuestionId = await findMissingQuestionId(tx, data)
     if (missingQuestionId) return { missingQuestionId }
-    const referencedOptionIds = await findReferencedRemovedOptionIds(tx, data)
+    const updateIds = data.questions.flatMap((question) =>
+      question.questionId ? [question.questionId] : [],
+    )
+    const [existingQuestions, existingOptions] = await Promise.all([
+      findExamQuestionsByExamIdInTransaction(tx, data.examId),
+      findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds),
+    ])
+    const referencedOptionIds =
+      await findExamAnswerOptionSelectionsInTransaction(
+        tx,
+        computeRemovedOptionIds(data.questions, existingOptions),
+      )
     if (referencedOptionIds.length > 0) return { referencedOptionIds }
+    const statsByQuestion = new Map(
+      (
+        await findExamAnswerStatsByQuestionIdsInTransaction(tx, [
+          ...updateIds,
+          ...data.deletedQuestionIds,
+        ])
+      ).map((row) => [row.questionId, row]),
+    )
+    const violation = findAnsweredEditViolation(
+      data,
+      new Map(existingQuestions.map((question) => [question.id, question])),
+      statsByQuestion,
+    )
+    if (violation) return violation
+    const rescoreNeeded = hasScoreRelevantEdits({
+      questions: data.questions,
+      deletedQuestionIds: data.deletedQuestionIds,
+      existingQuestions,
+      existingOptions,
+    })
     await updateExamInTransaction(tx, {
       examId: data.examId,
       title: data.title,
@@ -226,7 +325,9 @@ export async function saveExamChanges(data: SaveExamChangesData): Promise<{
     })
     await deleteQuestionsInTransaction(tx, data)
     await saveQuestionsInTransaction(tx, data)
-    await rescoreCompletedAttemptsInTransaction(tx, data.examId)
+    if (rescoreNeeded) {
+      await rescoreCompletedAttemptsInTransaction(tx, data.examId)
+    }
     return {}
   })
 }

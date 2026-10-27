@@ -55,6 +55,23 @@ export async function deleteExamById(examId: string): Promise<boolean> {
   return deleted.length > 0
 }
 
+/**
+ * Serializes exam scoring on the exams row: every path that reads the answer
+ * key or saved answers to persist verdicts/scores takes this lock first, and
+ * the authoring save takes it before its own key writes — so an in-flight
+ * operation can never commit scores computed against a stale key.
+ */
+export async function lockExamInTransaction(
+  tx: RepositoryTransactionClient,
+  examId: string,
+): Promise<void> {
+  await tx
+    .select({ id: exams.id })
+    .from(exams)
+    .where(eq(exams.id, examId))
+    .for('update')
+}
+
 export async function updateExamInTransaction(
   tx: RepositoryTransactionClient,
   values: {

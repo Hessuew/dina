@@ -3,6 +3,7 @@ import {
   allOpenAnswersGraded,
   autoGradeMultipleChoice,
   computeAttemptScores,
+  hasScoreRelevantEdits,
   rescoreCompletedAttempt,
 } from './exam-grading.domain'
 import type { ExamQuestionType } from './exam-lifecycle.domain'
@@ -165,6 +166,103 @@ describe('rescoreCompletedAttempt', () => {
 
     expect(rescored.autoScore).toBe(0)
     expect(rescored.answerUpdates).toEqual([])
+  })
+})
+
+describe('hasScoreRelevantEdits', () => {
+  const unchangedEdit = {
+    questions: [
+      {
+        questionId: 'q1',
+        type: 'multiple_choice' as ExamQuestionType,
+        points: 2,
+        options: [
+          { id: 'o1', isCorrect: true },
+          { id: 'o2', isCorrect: false },
+        ],
+      },
+      {
+        questionId: 'q3',
+        type: 'open_ended' as ExamQuestionType,
+        points: 5,
+        options: [],
+      },
+    ],
+    deletedQuestionIds: [],
+    existingQuestions: questions,
+    existingOptions: options,
+  }
+
+  it('is false when only prompts, labels, and order change', () => {
+    expect(hasScoreRelevantEdits(unchangedEdit)).toBe(false)
+  })
+
+  it('is true when the correct option set changes', () => {
+    const edit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          options: [
+            { id: 'o1', isCorrect: false },
+            { id: 'o2', isCorrect: true },
+          ],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(edit)).toBe(true)
+  })
+
+  it('is true when a kept option is marked correct alongside a new one', () => {
+    const edit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          options: [
+            { id: 'o1', isCorrect: true },
+            { id: 'o2', isCorrect: false },
+            { isCorrect: true },
+          ],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(edit)).toBe(true)
+  })
+
+  it('is true when points or type change on a kept question', () => {
+    const pointsEdit = {
+      ...unchangedEdit,
+      questions: [{ ...unchangedEdit.questions[0], points: 3 }],
+    }
+    expect(hasScoreRelevantEdits(pointsEdit)).toBe(true)
+    const typeEdit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          type: 'open_ended' as ExamQuestionType,
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(typeEdit)).toBe(true)
+  })
+
+  it('is true when a question is added or deleted', () => {
+    const added = {
+      ...unchangedEdit,
+      questions: [
+        ...unchangedEdit.questions,
+        {
+          type: 'multiple_choice' as ExamQuestionType,
+          points: 1,
+          options: [{ isCorrect: true }],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(added)).toBe(true)
+    const deleted = { ...unchangedEdit, deletedQuestionIds: ['q2'] }
+    expect(hasScoreRelevantEdits(deleted)).toBe(true)
   })
 })
 

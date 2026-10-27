@@ -21,9 +21,15 @@ import type {
   ExamRow,
 } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
+import type { GradeOpenAnswerOutcome } from '@/utils/exam/transaction/attempt-scoring.transaction'
 import { saveExamChanges } from '@/utils/exam/transaction/exam.transaction'
 import {
-  applyAutoGradeResults,
+  finalizeAttemptScoring,
+  finalizeGradingScoring,
+  gradeOpenAnswerScoring,
+  saveAnswerScoring,
+} from '@/utils/exam/transaction/attempt-scoring.transaction'
+import {
   countAttemptsByExam,
   deleteExamById,
   findAllExams,
@@ -41,11 +47,7 @@ import {
   findPublishedExams,
   insertAttemptIfAbsent,
   insertExam,
-  markAttemptGraded,
-  markAttemptSubmittedIfInProgress,
   setExamStatus,
-  updateExamAnswerGrade,
-  upsertExamAnswer,
 } from '@/utils/repository'
 import {
   computeDeadline,
@@ -61,19 +63,10 @@ import {
   validateForPublish,
 } from '@/utils/exam/domain/exam-lifecycle.domain'
 import {
-  allOpenAnswersGraded,
-  autoGradeMultipleChoice,
-  computeAttemptScores,
-} from '@/utils/exam/domain/exam-grading.domain'
-import {
   redactAnswersForStudent,
   redactAttemptForStudent,
   redactOptionsForStudent,
 } from '@/utils/exam/domain/exam-redaction.domain'
-import {
-  isOptionOfQuestion,
-  validateAnswerShape,
-} from '@/utils/exam/domain/exam-answer.domain'
 import {
   authz,
   hasStaffPrivilege,
@@ -355,6 +348,35 @@ export async function createExamService(
   }
 }
 
+function throwOnExamSaveViolation(
+  result: Awaited<ReturnType<typeof saveExamChanges>>,
+): void {
+  if (result.missingQuestionId) {
+    throw new NotFoundError('Question not found')
+  }
+  const violations: Array<[Array<string> | undefined, string]> = [
+    [
+      result.referencedOptionIds,
+      'Cannot remove an option that students have already selected',
+    ],
+    [
+      result.answeredQuestionIds,
+      'Cannot delete a question that students have already answered',
+    ],
+    [
+      result.retypedAnsweredQuestionIds,
+      'Cannot change the type of a question that students have already answered',
+    ],
+    [
+      result.pointsBelowAwardedQuestionIds,
+      'Cannot reduce question points below the points already awarded to students',
+    ],
+  ]
+  for (const [ids, message] of violations) {
+    if (ids && ids.length > 0) throw new ValidationError(message)
+  }
+}
+
 export async function saveExamChangesService(
   data: SaveExamChangesInput,
   userId: string,
@@ -387,14 +409,7 @@ export async function saveExamChangesService(
       })),
       deletedQuestionIds: data.deletedQuestionIds,
     })
-    if (result.missingQuestionId) {
-      throw new NotFoundError('Question not found')
-    }
-    if (result.referencedOptionIds && result.referencedOptionIds.length > 0) {
-      throw new ValidationError(
-        'Cannot remove an option that students have already selected',
-      )
-    }
+    throwOnExamSaveViolation(result)
     logExamMutationEvent('info', 'exam_updated', context, {
       examStatus: exam.status,
       questionCount: data.questions.length,
@@ -681,19 +696,12 @@ async function finalizeAttempt(
   attempt: ExamAttemptRow,
   submittedAt: Date,
 ): Promise<ExamAttemptRow> {
-  const [{ questions, options }, answers] = await Promise.all([
-    findQuestionsWithOptions(attempt.examId),
-    findExamAnswersByAttempt(attempt.id),
-  ])
-  const results = autoGradeMultipleChoice(answers, questions, options)
-  await applyAutoGradeResults(results)
-  const autoScore = results.reduce((sum, r) => sum + r.awardedPoints, 0)
-  const flipped = await markAttemptSubmittedIfInProgress(
-    attempt.id,
+  const finalized = await finalizeAttemptScoring({
+    attemptId: attempt.id,
+    examId: attempt.examId,
     submittedAt,
-    autoScore,
-  )
-  if (flipped) return flipped
+  })
+  if (finalized) return finalized
   const current = await findAttemptById(attempt.id)
   if (!current) throw new NotFoundError('Attempt not found')
   return current
@@ -768,28 +776,32 @@ async function saveAnswerForAttempt(
       details: { attemptId: attempt.id },
     })
   }
-  const { questions, options } = await findQuestionsWithOptions(attempt.examId)
-  const question = questions.find((q) => q.id === data.questionId)
-  if (!question) throw new NotFoundError('Question not found')
-  const shapeError = validateAnswerShape(question.type, data)
-  if (shapeError) throw new ValidationError(shapeError)
-  if (
-    data.selectedOptionId !== undefined &&
-    !isOptionOfQuestion(data.selectedOptionId, question.id, options)
-  ) {
+  const outcome = await saveAnswerScoring({
+    examId: attempt.examId,
+    attemptId: attempt.id,
+    questionId: data.questionId,
+    selectedOptionId: data.selectedOptionId,
+    textAnswer: data.textAnswer,
+  })
+  if (outcome.kind === 'attempt_finalized') {
+    throw new ValidationError('This attempt is no longer in progress', {
+      details: { attemptId: attempt.id },
+    })
+  }
+  if (outcome.kind === 'missing_question') {
+    throw new NotFoundError('Question not found')
+  }
+  if (outcome.kind === 'invalid_shape') {
+    throw new ValidationError(outcome.message)
+  }
+  if (outcome.kind === 'foreign_option') {
     throw new ValidationError(
       'Selected option does not belong to this question',
     )
   }
-  const answer = await upsertExamAnswer({
-    attemptId: attempt.id,
-    questionId: question.id,
-    selectedOptionId: data.selectedOptionId ?? null,
-    textAnswer: data.textAnswer ?? null,
-  })
   return {
-    answer,
-    question,
+    answer: outcome.answer,
+    question: outcome.question,
     remainingMs: remainingMs(now, attempt.deadlineAt),
   }
 }
@@ -998,12 +1010,16 @@ export async function listAttemptsForGradingService(
       context.role = isAdmin ? 'admin' : 'teacher'
       const attempts = await findAttemptsForGrading(data.examId)
       const now = new Date()
-      return Promise.all(
-        attempts.map(async ({ studentName, ...attempt }) => ({
+      // Sequential: each finalize runs its own transaction on this request's
+      // single connection and serializes on the same exams-row lock.
+      const finalized = []
+      for (const { studentName, ...attempt } of attempts) {
+        finalized.push({
           ...(await finalizeIfExpired(attempt, now)),
           studentName,
-        })),
-      )
+        })
+      }
+      return finalized
     },
     (result) => ({
       attemptCount: result.length,
@@ -1050,6 +1066,25 @@ export async function getAttemptForGradingService(
   )
 }
 
+function assertGradeableOutcome(
+  outcome: GradeOpenAnswerOutcome,
+): asserts outcome is { kind: 'graded'; question: ExamQuestionRow } {
+  if (outcome.kind === 'missing_attempt') {
+    throw new NotFoundError('Attempt not found')
+  }
+  if (outcome.kind === 'attempt_in_progress') {
+    throw new ConflictError('Cannot grade an attempt that is still in progress')
+  }
+  if (outcome.kind === 'not_open_ended') {
+    throw new ValidationError('Only open-ended answers can be graded manually')
+  }
+  if (outcome.kind === 'points_above_max') {
+    throw new ValidationError(
+      `Points cannot exceed the question maximum (${outcome.maxPoints})`,
+    )
+  }
+}
+
 export async function gradeOpenAnswerService(
   data: GradeOpenAnswerInput,
   userId: string,
@@ -1066,6 +1101,7 @@ export async function gradeOpenAnswerService(
     const answer = await findExamAnswerById(data.answerId)
     if (!answer) throw new NotFoundError('Answer not found')
     context.attemptId = answer.attemptId
+    context.questionId = answer.questionId
     const attempt = await findAttemptById(answer.attemptId)
     if (!attempt) throw new NotFoundError('Attempt not found')
     context.examId = attempt.examId
@@ -1074,23 +1110,17 @@ export async function gradeOpenAnswerService(
         'Cannot grade an attempt that is still in progress',
       )
     }
-    const { questions } = await findQuestionsWithOptions(attempt.examId)
-    const question = questions.find((q) => q.id === answer.questionId)
-    if (!question || question.type !== 'open_ended') {
-      throw new ValidationError(
-        'Only open-ended answers can be graded manually',
-      )
-    }
-    context.questionId = question.id
-    if (data.awardedPoints > question.points) {
-      throw new ValidationError(
-        `Points cannot exceed the question maximum (${question.points})`,
-      )
-    }
-    await updateExamAnswerGrade(data.answerId, data.awardedPoints)
+    const outcome = await gradeOpenAnswerScoring({
+      examId: attempt.examId,
+      attemptId: attempt.id,
+      questionId: answer.questionId,
+      answerId: answer.id,
+      awardedPoints: data.awardedPoints,
+    })
+    assertGradeableOutcome(outcome)
     logExamGradingEvent('info', 'exam_open_answer_graded', context, {
       status: 'graded',
-      questionType: question.type,
+      questionType: outcome.question.type,
     })
   } catch (error) {
     if (shouldLogExamFailure(error)) {
@@ -1121,28 +1151,22 @@ export async function finalizeGradingService(
     if (attempt.status !== 'submitted') {
       throw new ConflictError('Only submitted attempts can be finalized')
     }
-    const [{ questions }, answers] = await Promise.all([
-      findQuestionsWithOptions(attempt.examId),
-      findExamAnswersByAttempt(attempt.id),
-    ])
-    if (!allOpenAnswersGraded(answers, questions)) {
+    const outcome = await finalizeGradingScoring({
+      examId: attempt.examId,
+      attemptId: attempt.id,
+      gradedBy: userId,
+      feedback: data.feedback || null,
+    })
+    if (outcome.kind === 'missing_attempt') {
+      throw new NotFoundError('Attempt not found')
+    }
+    if (outcome.kind === 'not_submitted') {
+      throw new ConflictError('Only submitted attempts can be finalized')
+    }
+    if (outcome.kind === 'ungraded_open_answers') {
       throw new ValidationError(
         'All answered open-ended questions must be graded first',
       )
-    }
-    const scores = computeAttemptScores(answers, questions)
-    const graded = await markAttemptGraded(
-      attempt.id,
-      {
-        autoScore: scores.autoScore,
-        manualScore: scores.manualScore,
-        totalScore: scores.totalScore,
-      },
-      userId,
-      data.feedback || null,
-    )
-    if (!graded) {
-      throw new ConflictError('Only submitted attempts can be finalized')
     }
     logExamGradingEvent('info', 'exam_grading_finalized', context, {
       status: 'graded',

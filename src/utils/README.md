@@ -725,21 +725,25 @@ feature consumes them.
     table adapters in the email service. New email-message-only or email-campaign-lock-only
     access must use `@/utils/repository`.
     `exams.repository.ts` owns standalone exam reads and writes reused by exam authoring,
-    publishing, and student listing. `exam-questions.repository.ts` owns question-only reads,
+    publishing, and student listing, plus the exams-row lock that serializes scoring
+    against key edits. `exam-questions.repository.ts` owns question-only reads,
     total-point aggregation, and transaction-scoped question persistence.
     `exam-question-options.repository.ts` owns option-only reads and transaction-scoped
     reads and replacement. `exam-attempts.repository.ts` owns standalone exam-attempt reads,
-    writes, status transitions, counts, and exam-scoped ordering, plus transaction-scoped
-    completed-attempt reads and score writes. `exam-answers.repository.ts` owns standalone
-    answer reads, writes, and grading updates, plus transaction-scoped batch reads and
-    auto-grade writes. The exam service composes the shared
+    writes, counts, and exam-scoped ordering, plus transaction-scoped reads, status
+    transitions, and chunked score writes. `exam-answers.repository.ts` owns standalone
+    answer reads, plus transaction-scoped upsert, grading updates, batch reads, answer
+    stats, and chunked auto-grade writes. The exam service composes the shared
     question, option, attempt, and profile adapters for authoring and grading reads; the exam
-    transaction module retains the atomic exam-plus-question save orchestration and the
-    answer-key rescore of completed attempts that must commit with it. Its
+    transaction module retains the atomic exam-plus-question save orchestration, the
+    preservation guards, and the answer-key rescore of completed attempts that must commit
+    with it, while `attempt-scoring.transaction.ts` owns the exams-row-locked scoring
+    transitions (answer autosave, submit/lazy finalization, manual grading, grading
+    finalization) that must serialize with it. Its
     exam-row update delegates to the transaction-scoped adapter in
     `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
     and option persistence delegates to `exam-question-options.repository.ts`. The transaction
-    module is not a table repository; it coordinates the table adapters without importing
+    modules are not table repositories; they coordinate the table adapters without importing
     schema tables or issuing table-specific queries. New exam-only,
     exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only
     access must use `@/utils/repository`.
@@ -786,7 +790,7 @@ feature consumes them.
     `zoom_links_read_persistence`, including viewer-role preflight failures.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail. Session and override mutations emit redacted request-correlated Better Stack-ready telemetry with stable persistence categories.
   - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override, enrolment contact export, and exam management.
-  - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary. The `exam_management` Staff Privilege elevates a Teacher-user to exam manager: edit/publish any exam including published, and delete draft exams (a draft's creator may also delete it; published exams are never deletable). Editing a published exam's answer key regrades every completed attempt in the same transaction: submitted answers are preserved, multiple-choice verdicts and scores are recomputed, manually assigned open-answer points carry over, and in-progress attempts are left alone.
+  - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary. The `exam_management` Staff Privilege elevates a Teacher-user to exam manager: edit/publish any exam including published, and delete draft exams (a draft's creator may also delete it; published exams are never deletable). A score-relevant edit to a published exam's answer key regrades every completed attempt in the same transaction: submitted answers are preserved, multiple-choice verdicts and scores are recomputed in chunked bulk writes, manually assigned open-answer points carry over, and in-progress attempts are left alone. The save and every scoring transition serialize on the exams-row lock so a concurrent submit, autosave, or grade can never commit scores computed against a stale key; deleting or retyping an answered question, removing a selected option, or lowering an open question's points below an awarded grade are rejected before any write.
   - These typically export server functions that routes call for loading and mutations.
   - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.
