@@ -390,6 +390,11 @@ export async function saveExamChangesService(
     if (result.missingQuestionId) {
       throw new NotFoundError('Question not found')
     }
+    if (result.referencedOptionIds && result.referencedOptionIds.length > 0) {
+      throw new ValidationError(
+        'Cannot remove an option that students have already selected',
+      )
+    }
     logExamMutationEvent('info', 'exam_updated', context, {
       examStatus: exam.status,
       questionCount: data.questions.length,

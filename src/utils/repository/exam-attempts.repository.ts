@@ -1,4 +1,5 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { examAttempts } from '@/db/schema'
 
@@ -127,6 +128,52 @@ export async function markAttemptGraded(
     )
     .returning()
   return attempt
+}
+
+/**
+ * Completed attempts of an exam — the rescore set after an answer-key change.
+ * In-progress attempts are excluded: they grade against the current key at
+ * submission anyway.
+ */
+export async function findCompletedAttemptsByExamInTransaction(
+  tx: RepositoryTransactionClient,
+  examId: string,
+): Promise<Array<ExamAttemptRow>> {
+  return tx
+    .select()
+    .from(examAttempts)
+    .where(
+      and(
+        eq(examAttempts.examId, examId),
+        inArray(examAttempts.status, ['submitted', 'graded']),
+      ),
+    )
+    .orderBy(asc(examAttempts.startedAt))
+}
+
+/**
+ * Rewrites persisted scores after a rescore. manualScore/totalScore are only
+ * set when provided (graded attempts); submitted attempts keep them null
+ * until finalization, mirroring the submit-time shape.
+ */
+export async function updateExamAttemptScoresInTransaction(
+  tx: RepositoryTransactionClient,
+  attemptId: string,
+  scores: { autoScore: number; manualScore?: number; totalScore?: number },
+): Promise<void> {
+  await tx
+    .update(examAttempts)
+    .set({
+      autoScore: scores.autoScore,
+      ...(scores.manualScore === undefined
+        ? {}
+        : { manualScore: scores.manualScore }),
+      ...(scores.totalScore === undefined
+        ? {}
+        : { totalScore: scores.totalScore }),
+      updatedAt: new Date(),
+    })
+    .where(eq(examAttempts.id, attemptId))
 }
 
 export async function countAttemptsByExam(examId: string): Promise<number> {

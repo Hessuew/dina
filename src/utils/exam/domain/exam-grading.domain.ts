@@ -1,4 +1,7 @@
-import type { ExamQuestionType } from './exam-lifecycle.domain'
+import type {
+  ExamAttemptStatus,
+  ExamQuestionType,
+} from './exam-lifecycle.domain'
 
 type GradableQuestion = {
   id: string
@@ -83,7 +86,56 @@ export function computeAttemptScores(
       manualScore += awarded
     }
   }
-  return { autoScore, manualScore, totalScore: autoScore + manualScore, maxScore }
+  return {
+    autoScore,
+    manualScore,
+    totalScore: autoScore + manualScore,
+    maxScore,
+  }
+}
+
+export type RescoredAttempt = {
+  /** Points from multiple-choice answers under the current answer key. */
+  autoScore: number
+  /** Recomputed only for graded attempts; submitted attempts leave these unset. */
+  manualScore?: number
+  totalScore?: number
+  /** Per-answer auto-grade rows to persist for multiple-choice answers. */
+  answerUpdates: Array<AutoGradeResult>
+}
+
+/**
+ * Recomputes a completed attempt after the answer key changed: multiple-choice
+ * answers are re-graded against the current options while open-answer points
+ * (manually assigned) carry over untouched. Score shape mirrors the attempt
+ * lifecycle — submitted attempts persist only autoScore; graded attempts also
+ * persist manualScore (recomputed from the preserved open-answer points) and
+ * totalScore.
+ */
+export function rescoreCompletedAttempt(
+  status: ExamAttemptStatus,
+  answers: Array<GradableAnswer>,
+  questions: Array<GradableQuestion>,
+  options: Array<GradableOption>,
+): RescoredAttempt {
+  const answerUpdates = autoGradeMultipleChoice(answers, questions, options)
+  const awardedByAnswerId = new Map(
+    answerUpdates.map((update) => [update.answerId, update.awardedPoints]),
+  )
+  const scores = computeAttemptScores(
+    answers.map((answer) => ({
+      ...answer,
+      awardedPoints: awardedByAnswerId.get(answer.id) ?? answer.awardedPoints,
+    })),
+    questions,
+  )
+  return {
+    autoScore: scores.autoScore,
+    ...(status === 'graded'
+      ? { manualScore: scores.manualScore, totalScore: scores.totalScore }
+      : {}),
+    answerUpdates,
+  }
 }
 
 /**

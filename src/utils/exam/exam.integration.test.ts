@@ -1504,3 +1504,450 @@ describe('exam grading (integration)', () => {
     ).rejects.toThrow(NotFoundError)
   })
 })
+
+describe('exam answer-key rescore (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  async function answerAndSubmit(overrides: {
+    examId: string
+    studentId: string
+    mcQuestionId: string
+    selectedOptionId: string
+    openQuestionId?: string
+  }): Promise<string> {
+    const payload = await startAttemptService(
+      { examId: overrides.examId },
+      overrides.studentId,
+    )
+    await saveAnswerService(
+      {
+        attemptId: payload.attempt.id,
+        questionId: overrides.mcQuestionId,
+        selectedOptionId: overrides.selectedOptionId,
+      },
+      overrides.studentId,
+    )
+    if (overrides.openQuestionId) {
+      await saveAnswerService(
+        {
+          attemptId: payload.attempt.id,
+          questionId: overrides.openQuestionId,
+          textAnswer: 'essay response',
+        },
+        overrides.studentId,
+      )
+    }
+    await submitAttemptService(
+      { attemptId: payload.attempt.id },
+      overrides.studentId,
+    )
+    return payload.attempt.id
+  }
+
+  async function flipAnswerKey(input: {
+    examId: string
+    mcQuestionId: string
+    newCorrectOptionId: string
+    actorId: string
+  }): Promise<void> {
+    const exam = (await sharedRepository.findExamById(input.examId))!
+    const questions = await sharedRepository.findExamQuestionsByExamId(
+      input.examId,
+    )
+    const options = await sharedRepository.findExamQuestionOptionsByQuestionIds(
+      [input.mcQuestionId],
+    )
+    await saveExamChangesService(
+      {
+        examId: input.examId,
+        title: exam.title,
+        durationMinutes: exam.durationMinutes,
+        opensAt: exam.opensAt.toISOString(),
+        closesAt: exam.closesAt.toISOString(),
+        questions: questions.map((question) =>
+          question.id === input.mcQuestionId
+            ? {
+                questionId: question.id,
+                type: question.type,
+                prompt: question.prompt,
+                orderIndex: question.orderIndex,
+                points: question.points,
+                options: options.map((option) => ({
+                  id: option.id,
+                  label: option.label,
+                  orderIndex: option.orderIndex,
+                  isCorrect: option.id === input.newCorrectOptionId,
+                })),
+              }
+            : {
+                questionId: question.id,
+                type: question.type,
+                prompt: question.prompt,
+                orderIndex: question.orderIndex,
+                points: question.points,
+              },
+        ),
+        deletedQuestionIds: [],
+      },
+      input.actorId,
+    )
+  }
+
+  it('rescores completed attempts consistently when the answer key flips', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+
+    // Student picked the old correct option — submitted, awaiting grading.
+    const oldKeyStudentId = await seedProfile({ role: 'student' })
+    const submittedAttemptId = await answerAndSubmit({
+      examId,
+      studentId: oldKeyStudentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+
+    // Student picked the soon-to-be-correct option — open answer graded, finalized.
+    const newKeyStudentId = await seedProfile({ role: 'student' })
+    const gradedAttemptId = await answerAndSubmit({
+      examId,
+      studentId: newKeyStudentId,
+      mcQuestionId,
+      selectedOptionId: wrongOptionId,
+      openQuestionId,
+    })
+    const openAnswer = (
+      await sharedRepository.findExamAnswersByAttempt(gradedAttemptId)
+    ).find((answer) => answer.questionId === openQuestionId)!
+    await gradeOpenAnswerService(
+      { answerId: openAnswer.id, awardedPoints: 4 },
+      teacherId,
+    )
+    await finalizeGradingService(
+      { attemptId: gradedAttemptId, feedback: 'Nice essay' },
+      teacherId,
+    )
+
+    // Student still mid-exam — must stay untouched.
+    const inProgressStudentId = await seedProfile({ role: 'student' })
+    const inProgressPayload = await startAttemptService(
+      { examId },
+      inProgressStudentId,
+    )
+    await saveAnswerService(
+      {
+        attemptId: inProgressPayload.attempt.id,
+        questionId: mcQuestionId,
+        selectedOptionId: correctOptionId,
+      },
+      inProgressStudentId,
+    )
+
+    // Attempt on a different exam — must stay untouched.
+    const other = await seedPublishedMcExam(teacherId)
+    const otherStudentId = await seedProfile({ role: 'student' })
+    const otherAttemptId = await answerAndSubmit({
+      examId: other.examId,
+      studentId: otherStudentId,
+      mcQuestionId: other.mcQuestionId,
+      selectedOptionId: other.correctOptionId,
+    })
+
+    expect(
+      (await sharedRepository.findAttemptById(submittedAttemptId))!.autoScore,
+    ).toBe(2)
+    expect(
+      (await sharedRepository.findAttemptById(gradedAttemptId))!.autoScore,
+    ).toBe(0)
+
+    await flipAnswerKey({
+      examId,
+      mcQuestionId,
+      newCorrectOptionId: wrongOptionId,
+      actorId: adminId,
+    })
+
+    // Submitted attempt: rescored down, submitted answer preserved.
+    const resubmittedAttempt =
+      (await sharedRepository.findAttemptById(submittedAttemptId))!
+    expect(resubmittedAttempt).toMatchObject({
+      status: 'submitted',
+      autoScore: 0,
+      manualScore: null,
+      totalScore: null,
+    })
+    const resubmittedMc = (
+      await sharedRepository.findExamAnswersByAttempt(submittedAttemptId)
+    ).find((answer) => answer.questionId === mcQuestionId)
+    expect(resubmittedMc).toMatchObject({
+      selectedOptionId: correctOptionId,
+      isCorrect: false,
+      awardedPoints: 0,
+    })
+
+    // Graded attempt: rescored up, manual points and feedback preserved.
+    const regradedAttempt =
+      (await sharedRepository.findAttemptById(gradedAttemptId))!
+    expect(regradedAttempt).toMatchObject({
+      status: 'graded',
+      autoScore: 2,
+      manualScore: 4,
+      totalScore: 6,
+      feedback: 'Nice essay',
+    })
+    const regradedAnswers =
+      await sharedRepository.findExamAnswersByAttempt(gradedAttemptId)
+    expect(
+      regradedAnswers.find((answer) => answer.questionId === mcQuestionId),
+    ).toMatchObject({
+      selectedOptionId: wrongOptionId,
+      isCorrect: true,
+      awardedPoints: 2,
+    })
+    expect(
+      regradedAnswers.find((answer) => answer.questionId === openQuestionId),
+    ).toMatchObject({ awardedPoints: 4 })
+
+    // Grading and student-review projections read the same persisted result.
+    const gradingView = await getAttemptForGradingService(
+      { attemptId: gradedAttemptId },
+      teacherId,
+    )
+    expect(
+      gradingView.answers.find((answer) => answer.questionId === mcQuestionId),
+    ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
+    const studentView = await getAttemptForTakingService(
+      { examId },
+      newKeyStudentId,
+    )
+    expect(studentView.attempt.totalScore).toBe(6)
+    expect(
+      studentView.answers.find((answer) => answer.questionId === mcQuestionId),
+    ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
+
+    // In-progress attempt and the unrelated exam are unaffected.
+    const inProgressAttempt = (await sharedRepository.findAttemptById(
+      inProgressPayload.attempt.id,
+    ))!
+    expect(inProgressAttempt.status).toBe('in_progress')
+    expect(inProgressAttempt.autoScore).toBeNull()
+    const inProgressAnswers = await sharedRepository.findExamAnswersByAttempt(
+      inProgressPayload.attempt.id,
+    )
+    expect(inProgressAnswers).toHaveLength(1)
+    expect(inProgressAnswers[0]).toMatchObject({
+      isCorrect: null,
+      awardedPoints: null,
+    })
+
+    expect(
+      (await sharedRepository.findAttemptById(otherAttemptId))!.autoScore,
+    ).toBe(2)
+    const otherAnswers =
+      await sharedRepository.findExamAnswersByAttempt(otherAttemptId)
+    expect(
+      otherAnswers.find((answer) => answer.questionId === other.mcQuestionId),
+    ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
+  })
+
+  it('rejects removing an option a student selected, preserving the answer', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId, wrongOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: wrongOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+    const questions = await sharedRepository.findExamQuestionsByExamId(examId)
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Removal attempt',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: questions.map((question) =>
+            question.id === mcQuestionId
+              ? {
+                  questionId: question.id,
+                  type: question.type,
+                  prompt: question.prompt,
+                  orderIndex: question.orderIndex,
+                  points: question.points,
+                  options: [
+                    {
+                      id: correctOptionId,
+                      label: 'Correct',
+                      orderIndex: 0,
+                      isCorrect: true,
+                    },
+                    { label: 'Replacement', orderIndex: 1, isCorrect: false },
+                  ],
+                }
+              : {
+                  questionId: question.id,
+                  type: question.type,
+                  prompt: question.prompt,
+                  orderIndex: question.orderIndex,
+                  points: question.points,
+                },
+          ),
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // The whole save was rejected: title, options, and the submitted answer
+    // are all untouched.
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(persistedOptions.map((option) => option.id).sort()).toEqual(
+      [correctOptionId, wrongOptionId].sort(),
+    )
+    expect((await sharedRepository.findExamById(examId))!.title).toBe(
+      exam.title,
+    )
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(answers).toHaveLength(1)
+    expect(answers[0]).toMatchObject({
+      selectedOptionId: wrongOptionId,
+      isCorrect: false,
+      awardedPoints: 0,
+    })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      0,
+    )
+  })
+
+  it('still allows removing an option nobody selected', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId, wrongOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+    const questions = await sharedRepository.findExamQuestionsByExamId(examId)
+
+    await saveExamChangesService(
+      {
+        examId,
+        title: 'Drops unselected option',
+        durationMinutes: exam.durationMinutes,
+        opensAt: exam.opensAt.toISOString(),
+        closesAt: exam.closesAt.toISOString(),
+        questions: questions.map((question) =>
+          question.id === mcQuestionId
+            ? {
+                questionId: question.id,
+                type: question.type,
+                prompt: question.prompt,
+                orderIndex: question.orderIndex,
+                points: question.points,
+                options: [
+                  {
+                    id: correctOptionId,
+                    label: 'Correct',
+                    orderIndex: 0,
+                    isCorrect: true,
+                  },
+                  { label: 'Replacement', orderIndex: 1, isCorrect: false },
+                ],
+              }
+            : {
+                questionId: question.id,
+                type: question.type,
+                prompt: question.prompt,
+                orderIndex: question.orderIndex,
+                points: question.points,
+              },
+        ),
+        deletedQuestionIds: [],
+      },
+      adminId,
+    )
+
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(persistedOptions.map((option) => option.id)).not.toContain(
+      wrongOptionId,
+    )
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(answers[0]).toMatchObject({
+      selectedOptionId: correctOptionId,
+      isCorrect: true,
+      awardedPoints: 2,
+    })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      2,
+    )
+  })
+
+  it('rolls back the answer-key change when the rescore write fails', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId, wrongOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: wrongOptionId,
+    })
+
+    vi.spyOn(
+      sharedRepository,
+      'updateExamAttemptScoresInTransaction',
+    ).mockRejectedValueOnce(new Error('rescore write failure'))
+
+    await expect(
+      flipAnswerKey({
+        examId,
+        mcQuestionId,
+        newCorrectOptionId: wrongOptionId,
+        actorId: adminId,
+      }),
+    ).rejects.toThrow('rescore write failure')
+
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(
+      persistedOptions.find((option) => option.id === correctOptionId)!
+        .isCorrect,
+    ).toBe(true)
+    expect(
+      persistedOptions.find((option) => option.id === wrongOptionId)!.isCorrect,
+    ).toBe(false)
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      0,
+    )
+  })
+})

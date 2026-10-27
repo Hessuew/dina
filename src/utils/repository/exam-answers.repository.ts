@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { examAnswers } from '@/db/schema'
 
@@ -35,6 +36,54 @@ export async function findExamAnswersByAttempt(
     .select()
     .from(examAnswers)
     .where(eq(examAnswers.attemptId, attemptId))
+}
+
+export async function findExamAnswersByAttemptIdsInTransaction(
+  tx: RepositoryTransactionClient,
+  attemptIds: Array<string>,
+): Promise<Array<ExamAnswerRow>> {
+  if (attemptIds.length === 0) return []
+  return tx
+    .select()
+    .from(examAnswers)
+    .where(inArray(examAnswers.attemptId, attemptIds))
+}
+
+/**
+ * Option ids referenced by saved answers — the deletion guard for the option
+ * replacement path, whose FK would otherwise set these references to null.
+ */
+export async function findExamAnswerOptionSelectionsInTransaction(
+  tx: RepositoryTransactionClient,
+  optionIds: Array<string>,
+): Promise<Array<string>> {
+  if (optionIds.length === 0) return []
+  const rows = await tx
+    .select({ selectedOptionId: examAnswers.selectedOptionId })
+    .from(examAnswers)
+    .where(inArray(examAnswers.selectedOptionId, optionIds))
+  return rows.flatMap((row) =>
+    row.selectedOptionId ? [row.selectedOptionId] : [],
+  )
+}
+
+/**
+ * Persists one auto-grade verdict inside the rescore transaction. Only the
+ * grading columns move — the submitted answer itself is never rewritten.
+ */
+export async function updateExamAnswerAutoGradeInTransaction(
+  tx: RepositoryTransactionClient,
+  answerId: string,
+  result: { isCorrect: boolean; awardedPoints: number },
+): Promise<void> {
+  await tx
+    .update(examAnswers)
+    .set({
+      isCorrect: result.isCorrect,
+      awardedPoints: result.awardedPoints,
+      updatedAt: new Date(),
+    })
+    .where(eq(examAnswers.id, answerId))
 }
 
 export async function applyAutoGradeResults(
