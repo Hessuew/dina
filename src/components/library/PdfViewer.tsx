@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,6 +17,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
+import { createPdfDocumentLoad } from '@/components/library/pdf-document.domain'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -43,11 +45,13 @@ type ViewerSize = {
 }
 
 function usePdfDocument(url: string) {
+  const router = useRouter()
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -55,7 +59,7 @@ function usePdfDocument(url: string) {
     setPageNum(1)
     setPdf(null)
 
-    let task: ReturnType<typeof pdfjsLib.getDocument> | null = null
+    let task: ReturnType<typeof pdfjsLib.getDocument>
     try {
       task = pdfjsLib.getDocument({ url })
     } catch {
@@ -64,22 +68,28 @@ function usePdfDocument(url: string) {
       return
     }
 
-    task.promise
-      .then((doc) => {
+    const load = createPdfDocumentLoad(task, {
+      onLoaded: (doc) => {
         setPdf(doc)
         setNumPages(doc.numPages)
         setLoading(false)
-      })
-      .catch(() => {
+      },
+      onFailed: () => {
         setLoading(false)
         setError(true)
-      })
-    return () => {
-      task.destroy()
-    }
-  }, [url])
+      },
+    })
+    return () => load.cancel()
+  }, [url, attempt])
 
-  return { pdf, pageNum, setPageNum, numPages, loading, error }
+  // Reload the route loader so a retry also gets a fresh signed URL — the
+  // issued one expires after an hour (ADR 0002).
+  const retry = useCallback(() => {
+    setAttempt((current) => current + 1)
+    void router.invalidate()
+  }, [router])
+
+  return { pdf, pageNum, setPageNum, numPages, loading, error, retry }
 }
 
 function useViewerSize(
@@ -590,10 +600,19 @@ function PdfLoadingState({ isLoading }: { isLoading: boolean }) {
   return <div className="py-12 text-sm text-[#8E816D]">Loading…</div>
 }
 
-function PdfErrorState() {
+function PdfErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="py-12 text-center text-sm text-[#8E816D]">
+    <div className="flex flex-col items-center gap-4 py-12 text-center text-sm text-[#8E816D]">
       Unable to load document.
+      <Button
+        variant="ghost"
+        theme="dark"
+        size="sm"
+        className={READER_BAR_BUTTON_CLASSES}
+        onClick={onRetry}
+      >
+        Try again
+      </Button>
     </div>
   )
 }
@@ -822,7 +841,7 @@ export function PdfViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [pageSize, setPageSize] = useState<ViewerSize>({ width: 0, height: 0 })
-  const { pdf, pageNum, setPageNum, numPages, loading, error } =
+  const { pdf, pageNum, setPageNum, numPages, loading, error, retry } =
     usePdfDocument(url)
   const { isFullscreen, isFallbackFullscreen, toggle } =
     usePdfFullscreen(containerRef)
@@ -850,7 +869,7 @@ export function PdfViewer({
   })
 
   if (error) {
-    return <PdfErrorState />
+    return <PdfErrorState onRetry={retry} />
   }
 
   return (

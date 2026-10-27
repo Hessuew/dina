@@ -46,6 +46,10 @@ This folder contains:
     portaled menus must not be used inside it — portals render outside the
     native-fullscreen element. Gestures (tap-to-toggle chrome in fullscreen,
     swipe page-turns at zoom 1) are classified in `pdf-viewer.gesture.domain.ts`.
+    Document loads go through `pdf-document.domain.ts`: a cancelled/superseded
+    PDF.js task must never write state for the current URL, and the error state
+    retries by re-running the route loader to reissue the signed URL (1h TTL,
+    ADR 0002).
 
 ## Key Invariants / Assumptions
 
