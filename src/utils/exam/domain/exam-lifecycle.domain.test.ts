@@ -4,6 +4,7 @@ import {
   canDeleteExam,
   canEditExam,
   canTransitionAttempt,
+  questionStructureErrors,
   validateForPublish,
 } from './exam-lifecycle.domain'
 import type { ExamQuestionType } from './exam-lifecycle.domain'
@@ -140,6 +141,78 @@ describe('validateForPublish', () => {
     expect(errors).toContain(
       'Question 1: open-ended questions cannot have options',
     )
+  })
+})
+
+describe('questionStructureErrors', () => {
+  it('accepts a valid multiple-choice question', () => {
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: options(true, false),
+      }),
+    ).toEqual([])
+  })
+
+  it('rejects multiple choice with fewer than 2 options', () => {
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: options(true),
+      }),
+    ).toEqual(['Multiple choice questions need at least 2 options'])
+  })
+
+  it('rejects multiple choice without exactly one correct option', () => {
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: options(false, false),
+      }),
+    ).toEqual(['Exactly one option must be marked correct'])
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: options(true, true),
+      }),
+    ).toEqual(['Exactly one option must be marked correct'])
+  })
+
+  it('rejects options on an open-ended question', () => {
+    expect(
+      questionStructureErrors({
+        type: 'open_ended',
+        options: options(true),
+      }),
+    ).toEqual(['Open-ended questions cannot have options'])
+    expect(
+      questionStructureErrors({ type: 'open_ended', options: [] }),
+    ).toEqual([])
+  })
+
+  it('collapses repeated option ids, counting the last entry once', () => {
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: [
+          { id: 'o1', isCorrect: false },
+          { id: 'o1', isCorrect: true },
+          { isCorrect: false },
+        ],
+      }),
+    ).toEqual([])
+    expect(
+      questionStructureErrors({
+        type: 'multiple_choice',
+        options: [
+          { id: 'o1', isCorrect: true },
+          { id: 'o1', isCorrect: false },
+        ],
+      }),
+    ).toEqual([
+      'Multiple choice questions need at least 2 options',
+      'Exactly one option must be marked correct',
+    ])
   })
 })
 

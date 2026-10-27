@@ -27,6 +27,7 @@ import {
   hasScoreRelevantEdits,
   rescoreCompletedAttempt,
 } from '@/utils/exam/domain/exam-grading.domain'
+import { questionStructureErrors } from '@/utils/exam/domain/exam-lifecycle.domain'
 
 /* v8 ignore start */
 type ExamChangesQuestion = {
@@ -130,6 +131,34 @@ async function saveQuestionsInTransaction(
       await insertQuestionInTransaction(tx, data.examId, question)
     }
   }
+}
+
+/**
+ * Every option id sent under a question must reference one of that
+ * question's existing options — a dangling id updates nothing while the
+ * question's real options are deleted (leaving it malformed), and a foreign
+ * id would overwrite another question's option row. Options on new questions
+ * carry no ids; their rows do not exist yet.
+ */
+function findMissingOptionId(
+  questions: Array<ExamChangesQuestion>,
+  existingOptions: Array<ExamQuestionOptionRow>,
+): string | undefined {
+  const existingIdsByQuestion = new Map<string, Set<string>>()
+  for (const option of existingOptions) {
+    const ids = existingIdsByQuestion.get(option.questionId) ?? new Set()
+    ids.add(option.id)
+    existingIdsByQuestion.set(option.questionId, ids)
+  }
+  for (const question of questions) {
+    const validIds = question.questionId
+      ? existingIdsByQuestion.get(question.questionId)
+      : undefined
+    for (const option of question.options) {
+      if (option.id && !validIds?.has(option.id)) return option.id
+    }
+  }
+  return undefined
 }
 
 /**
@@ -270,6 +299,8 @@ async function rescoreCompletedAttemptsInTransaction(
 /** Saves an exam and its questions/options as one atomic authoring operation. */
 export async function saveExamChanges(data: SaveExamChangesData): Promise<{
   missingQuestionId?: string
+  missingOptionId?: string
+  malformedQuestionError?: string
   referencedOptionIds?: Array<string>
   answeredQuestionIds?: Array<string>
   retypedAnsweredQuestionIds?: Array<string>
@@ -281,6 +312,10 @@ export async function saveExamChanges(data: SaveExamChangesData): Promise<{
     // lock before reading the key or answers, so no concurrent submit, grade,
     // or answer can interleave between the preservation reads and the writes.
     await lockExamInTransaction(tx, data.examId)
+    const malformedQuestionError = data.questions
+      .flatMap((question) => questionStructureErrors(question))
+      .at(0)
+    if (malformedQuestionError) return { malformedQuestionError }
     const missingQuestionId = await findMissingQuestionId(tx, data)
     if (missingQuestionId) return { missingQuestionId }
     const updateIds = data.questions.flatMap((question) =>
@@ -290,6 +325,8 @@ export async function saveExamChanges(data: SaveExamChangesData): Promise<{
       findExamQuestionsByExamIdInTransaction(tx, data.examId),
       findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds),
     ])
+    const missingOptionId = findMissingOptionId(data.questions, existingOptions)
+    if (missingOptionId) return { missingOptionId }
     const referencedOptionIds =
       await findExamAnswerOptionSelectionsInTransaction(
         tx,

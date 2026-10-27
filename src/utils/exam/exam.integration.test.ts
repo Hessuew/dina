@@ -2199,6 +2199,315 @@ describe('exam answer-key rescore (integration)', () => {
     })
   })
 
+  it('rejects an option id that is not on the question, preserving everything', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId, wrongOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Dangling option id',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice',
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [
+                {
+                  id: randomUUID(),
+                  label: 'Ghost option',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 1,
+                  isCorrect: false,
+                },
+              ],
+            },
+          ],
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(NotFoundError)
+
+    // The whole save was rejected: both options and the verdict stand.
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(persistedOptions.map((option) => option.id).sort()).toEqual(
+      [correctOptionId, wrongOptionId].sort(),
+    )
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(answers[0]).toMatchObject({
+      selectedOptionId: correctOptionId,
+      isCorrect: true,
+      awardedPoints: 2,
+    })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      2,
+    )
+  })
+
+  it('rejects an option id that belongs to a different question', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const otherQuestionId = await seedExamQuestion({
+      examId,
+      orderIndex: 2,
+      points: 1,
+    })
+    const otherOptionId = await seedExamOption({
+      questionId: otherQuestionId,
+      orderIndex: 0,
+      isCorrect: true,
+    })
+    await seedExamOption({ questionId: otherQuestionId, orderIndex: 1 })
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'Foreign option id',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice',
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [
+                {
+                  id: otherOptionId,
+                  label: 'Stolen option',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 1,
+                  isCorrect: false,
+                },
+              ],
+            },
+          ],
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(NotFoundError)
+
+    // The other question's option was not overwritten.
+    const otherOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        otherQuestionId,
+      ])
+    expect(
+      otherOptions.find((option) => option.id === otherOptionId),
+    ).toMatchObject({ label: 'Option 1', isCorrect: true })
+  })
+
+  it('rejects option ids on a new question', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const { examId, mcQuestionId, correctOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const exam = (await sharedRepository.findExamById(examId))!
+
+    await expect(
+      saveExamChangesService(
+        {
+          examId,
+          title: 'New question carrying an existing option id',
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt.toISOString(),
+          closesAt: exam.closesAt.toISOString(),
+          questions: [
+            {
+              type: 'multiple_choice',
+              prompt: 'New question',
+              orderIndex: 2,
+              points: 1,
+              options: [
+                {
+                  id: correctOptionId,
+                  label: 'Reused?',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                { label: 'B', orderIndex: 1, isCorrect: false },
+              ],
+            },
+          ],
+          deletedQuestionIds: [],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(NotFoundError)
+
+    // No question was inserted and the original option was not touched.
+    expect(
+      await sharedRepository.findExamQuestionsByExamId(examId),
+    ).toHaveLength(2)
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(
+      persistedOptions.find((option) => option.id === correctOptionId),
+    ).toMatchObject({ label: 'Option 1', isCorrect: true })
+  })
+
+  it('rejects malformed question structure without touching completed scores', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const {
+      examId,
+      mcQuestionId,
+      correctOptionId,
+      wrongOptionId,
+      openQuestionId,
+    } = await seedPublishedMcExam(teacherId)
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = await answerAndSubmit({
+      examId,
+      studentId,
+      mcQuestionId,
+      selectedOptionId: correctOptionId,
+    })
+    const exam = (await sharedRepository.findExamById(examId))!
+    const meta = {
+      examId,
+      title: exam.title,
+      durationMinutes: exam.durationMinutes,
+      opensAt: exam.opensAt.toISOString(),
+      closesAt: exam.closesAt.toISOString(),
+      deletedQuestionIds: [] as Array<string>,
+    }
+
+    // Multiple choice with no options at all.
+    await expect(
+      saveExamChangesService(
+        {
+          ...meta,
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice' as const,
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [],
+            },
+          ],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // A repeated option id collapses to one row on write, leaving zero
+    // correct options — the surviving structure is malformed.
+    await expect(
+      saveExamChangesService(
+        {
+          ...meta,
+          questions: [
+            {
+              questionId: mcQuestionId,
+              type: 'multiple_choice' as const,
+              prompt: 'Pick A',
+              orderIndex: 0,
+              points: 2,
+              options: [
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 0,
+                  isCorrect: true,
+                },
+                {
+                  id: correctOptionId,
+                  label: 'A',
+                  orderIndex: 1,
+                  isCorrect: false,
+                },
+              ],
+            },
+          ],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // Options on an open-ended question.
+    await expect(
+      saveExamChangesService(
+        {
+          ...meta,
+          questions: [
+            {
+              questionId: openQuestionId,
+              type: 'open_ended' as const,
+              prompt: 'Essay',
+              orderIndex: 1,
+              points: 5,
+              options: [
+                { label: 'A', orderIndex: 0, isCorrect: true },
+                { label: 'B', orderIndex: 1, isCorrect: false },
+              ],
+            },
+          ],
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(ValidationError)
+
+    // Nothing was written: options, verdicts, and the score all stand.
+    const persistedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        mcQuestionId,
+      ])
+    expect(persistedOptions.map((option) => option.id).sort()).toEqual(
+      [correctOptionId, wrongOptionId].sort(),
+    )
+    const answers = await sharedRepository.findExamAnswersByAttempt(attemptId)
+    expect(answers[0]).toMatchObject({
+      selectedOptionId: correctOptionId,
+      isCorrect: true,
+      awardedPoints: 2,
+    })
+    expect((await sharedRepository.findAttemptById(attemptId))!.autoScore).toBe(
+      2,
+    )
+  })
+
   it('rescales multiple-choice awards when question points change', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const adminId = await seedProfile({ role: 'admin' })

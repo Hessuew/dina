@@ -354,6 +354,12 @@ function throwOnExamSaveViolation(
   if (result.missingQuestionId) {
     throw new NotFoundError('Question not found')
   }
+  if (result.missingOptionId) {
+    throw new NotFoundError('Option not found')
+  }
+  if (result.malformedQuestionError) {
+    throw new ValidationError(result.malformedQuestionError)
+  }
   const violations: Array<[Array<string> | undefined, string]> = [
     [
       result.referencedOptionIds,

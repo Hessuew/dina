@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { questionStructureErrors } from '@/utils/exam/domain/exam-lifecycle.domain'
 
 export const createExamSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -43,28 +44,11 @@ function validateQuestionFields(
   value: z.infer<z.ZodObject<typeof questionFields>>,
   ctx: z.RefinementCtx,
 ) {
-  if (value.type === 'multiple_choice') {
-    const options = value.options ?? []
-    if (options.length < 2) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['options'],
-        message: 'Multiple choice questions need at least 2 options',
-      })
-    }
-    if (options.filter((option) => option.isCorrect).length !== 1) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['options'],
-        message: 'Exactly one option must be marked correct',
-      })
-    }
-  } else if (value.options && value.options.length > 0) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['options'],
-      message: 'Open-ended questions cannot have options',
-    })
+  for (const message of questionStructureErrors({
+    type: value.type,
+    options: value.options ?? [],
+  })) {
+    ctx.addIssue({ code: 'custom', path: ['options'], message })
   }
 }
 

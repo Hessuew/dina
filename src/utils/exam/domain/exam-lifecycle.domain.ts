@@ -44,6 +44,39 @@ export function canDeleteExam(status: ExamStatus): boolean {
 }
 
 /**
+ * The per-question structure a save may produce — shared by the request
+ * schema and the authoring transaction so a bypass cannot persist a key the
+ * rescore would silently grade against: multiple choice keeps at least two
+ * options with exactly one correct; open-ended keeps none. Repeated option
+ * ids collapse to one row on write (the last entry wins), so they count once.
+ */
+export function questionStructureErrors(question: {
+  type: ExamQuestionType
+  options: Array<{ id?: string; isCorrect?: boolean }>
+}): Array<string> {
+  const keptById = new Map<string, { isCorrect?: boolean }>()
+  const fresh: Array<{ isCorrect?: boolean }> = []
+  for (const option of question.options) {
+    if (option.id) keptById.set(option.id, option)
+    else fresh.push(option)
+  }
+  const options = [...keptById.values(), ...fresh]
+  if (question.type === 'multiple_choice') {
+    const errors: Array<string> = []
+    if (options.length < 2) {
+      errors.push('Multiple choice questions need at least 2 options')
+    }
+    if (options.filter((option) => option.isCorrect).length !== 1) {
+      errors.push('Exactly one option must be marked correct')
+    }
+    return errors
+  }
+  return options.length > 0
+    ? ['Open-ended questions cannot have options']
+    : []
+}
+
+/**
  * Validates an exam for publishing. Returns a list of human-readable errors;
  * empty means publishable.
  */
