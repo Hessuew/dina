@@ -615,7 +615,7 @@ function usePdfResume({
 }
 
 function usePdfPagePipeline({
-  url,
+  docKey,
   pdf,
   pageNum,
   viewerSize,
@@ -625,7 +625,7 @@ function usePdfPagePipeline({
   setPageSize,
   onGesture,
 }: {
-  url: string
+  docKey: string
   pdf: PDFDocumentProxy | null
   pageNum: number
   viewerSize: ViewerSize
@@ -635,8 +635,8 @@ function usePdfPagePipeline({
   setPageSize: Dispatch<SetStateAction<ViewerSize>>
   onGesture: (gesture: PdfGesture) => void
 }) {
-  const zoomResetKey = `${url}:${isFullscreen}`
-  const pageScrollKey = `${url}:${pageNum}`
+  const zoomResetKey = `${docKey}:${isFullscreen}`
+  const pageScrollKey = `${docKey}:${pageNum}`
   const zoom = usePdfZoom(viewportRef, zoomResetKey, pageScrollKey, onGesture)
   const renderedZoom = useRenderedZoom(zoom.zoom, zoomResetKey)
   usePdfPageRender({
@@ -672,7 +672,7 @@ export function PdfViewer({
   const viewerSize = useViewerSize(containerEl, isFullscreen)
   const chrome = usePdfReaderChrome(isFullscreen, numPages, setPageNum)
   const zoom = usePdfPagePipeline({
-    url,
+    docKey,
     pdf,
     pageNum,
     viewerSize,

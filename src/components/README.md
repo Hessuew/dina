@@ -49,7 +49,8 @@ This folder contains:
     Document loads go through `pdf-document.domain.ts`: a cancelled/superseded
     PDF.js task must never write state for the current URL, and the storage
     object path (`resolvePdfDocumentKey`) — not the signed URL — identifies the
-    document, so a retry preserves the reader's page. Signed-URL viewers
+    document, so a retry preserves the reader's page, zoom, and scroll position.
+    Signed-URL viewers
     recover via `resolveViewerUrl` + a loader re-run that reissues the URL
     (1h TTL, ADR 0002): PDF/video surface Try again on detected failures,
     while Office shows a persistent "Document not loading?" action because
