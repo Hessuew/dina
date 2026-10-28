@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,217 +10,27 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
 } from 'lucide-react'
-// Legacy build polyfills Promise.withResolvers for older browsers (DINA-Z).
-import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { Dispatch, Ref, RefObject, SetStateAction } from 'react'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
-import {
-  createPdfDocumentLoad,
-  resolvePdfDocumentKey,
-} from '@/components/library/pdf-document.domain'
+import type { ViewerSize } from '@/components/library/use-pdf-viewer-size'
+import { usePdfDocument } from '@/components/library/use-pdf-document'
+import { usePdfFullscreen } from '@/components/library/use-pdf-fullscreen'
+import { useViewerSize } from '@/components/library/use-pdf-viewer-size'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   resolvePdfPageInput,
   resolvePdfResumePage,
 } from '@/components/library/pdf-viewer.domain'
-import { toggleNativePdfFullscreen } from '@/components/library/pdf-viewer.fullscreen'
 import { usePdfZoom } from '@/components/library/use-pdf-zoom'
 import { cn } from '@/lib/utils'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-
-const PDF_VIEWER_VERTICAL_CHROME = 120
-const PDF_VIEWER_FULLSCREEN_CHROME = 72
-const MIN_PAGE_HEIGHT = 320
 const ZOOM_RENDER_DELAY_MS = 120
 // The ghost variant's hover/aria-expanded tokens use light-theme muted/foreground
 // (near-white bg, near-black icon) — illegible on the dark reader surface.
 const READER_BAR_BUTTON_CLASSES =
   'hover:bg-white/10 hover:text-white aria-expanded:bg-white/10 aria-expanded:text-[#D6B16E]'
-
-type ViewerSize = {
-  width: number
-  height: number
-}
-
-function usePdfDocument(url: string) {
-  const router = useRouter()
-  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
-  const [pageNum, setPageNum] = useState(1)
-  const [numPages, setNumPages] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-  const docKey = resolvePdfDocumentKey(url)
-  const docKeyRef = useRef(docKey)
-
-  useEffect(() => {
-    setLoading(true)
-    setError(false)
-    // A re-issued signed URL for the same document keeps the reader's page;
-    // only opening a different document resets to page one.
-    if (docKeyRef.current !== docKey) {
-      docKeyRef.current = docKey
-      setPageNum(1)
-    }
-    setPdf(null)
-
-    let task: ReturnType<typeof pdfjsLib.getDocument>
-    try {
-      task = pdfjsLib.getDocument({ url })
-    } catch {
-      setLoading(false)
-      setError(true)
-      return
-    }
-
-    const load = createPdfDocumentLoad(task, {
-      onLoaded: (doc) => {
-        setPdf(doc)
-        setNumPages(doc.numPages)
-        setLoading(false)
-      },
-      onFailed: () => {
-        setLoading(false)
-        setError(true)
-      },
-    })
-    return () => load.cancel()
-  }, [url, docKey])
-
-  // Reload the route loader so a retry gets a fresh signed URL — the issued
-  // one expires after an hour (ADR 0002). The new URL drives the reload, so
-  // no request ever goes out against the stale URL.
-  const retry = useCallback(() => {
-    void router.invalidate()
-  }, [router])
-
-  return { pdf, pageNum, setPageNum, numPages, loading, error, retry, docKey }
-}
-
-function useViewerSize(
-  container: HTMLDivElement | null,
-  isFullscreen: boolean,
-) {
-  const [viewerSize, setViewerSize] = useState<ViewerSize>({
-    width: 800,
-    height: 800,
-  })
-
-  useEffect(() => {
-    const updateViewerSize = () => {
-      const width = container?.clientWidth ?? 800
-      const height = Math.max(
-        MIN_PAGE_HEIGHT,
-        window.innerHeight -
-          (isFullscreen
-            ? PDF_VIEWER_FULLSCREEN_CHROME
-            : PDF_VIEWER_VERTICAL_CHROME),
-      )
-
-      setViewerSize((current) => {
-        if (current.width === width && current.height === height) return current
-        return { width, height }
-      })
-    }
-
-    updateViewerSize()
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateViewerSize)
-    if (container) resizeObserver?.observe(container)
-    window.addEventListener('resize', updateViewerSize)
-
-    return () => {
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', updateViewerSize)
-    }
-  }, [container, isFullscreen])
-
-  return viewerSize
-}
-
-function useNativeFullscreen(container: HTMLDivElement | null) {
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isSupported, setIsSupported] = useState(false)
-
-  useEffect(() => {
-    const update = () => {
-      setIsFullscreen(document.fullscreenElement === container)
-      setIsSupported(
-        Boolean(container?.requestFullscreen && document.exitFullscreen),
-      )
-    }
-    update()
-    document.addEventListener('fullscreenchange', update)
-    return () => document.removeEventListener('fullscreenchange', update)
-  }, [container])
-
-  const toggle = async (): Promise<'handled' | 'fallback'> => {
-    if (!container) return 'handled'
-    return toggleNativePdfFullscreen(document, container)
-  }
-
-  return { isFullscreen, isSupported, toggle }
-}
-
-function useFallbackFullscreen() {
-  const [isFullscreen, setIsFullscreen] = useState(false)
-
-  useEffect(() => {
-    if (!isFullscreen) return
-    const previousOverflow = document.body.style.overflow
-    const exitOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsFullscreen(false)
-    }
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', exitOnEscape)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', exitOnEscape)
-    }
-  }, [isFullscreen])
-
-  return {
-    isFullscreen,
-    enter: useCallback(() => setIsFullscreen(true), []),
-    toggle: useCallback(() => setIsFullscreen((current) => !current), []),
-  }
-}
-
-function usePdfFullscreen(container: HTMLDivElement | null) {
-  const native = useNativeFullscreen(container)
-  const fallback = useFallbackFullscreen()
-
-  // A surface unmount (e.g. the error state) would strand fallback fullscreen
-  // with body overflow hidden — exit it so the page stays usable.
-  useEffect(() => {
-    if (container == null && fallback.isFullscreen) fallback.toggle()
-  }, [container, fallback.isFullscreen, fallback.toggle])
-
-  const toggle = () => {
-    if (fallback.isFullscreen) {
-      fallback.toggle()
-      return
-    }
-    if (native.isSupported) {
-      void native.toggle().then((result) => {
-        if (result === 'fallback') fallback.enter()
-      })
-      return
-    }
-    fallback.toggle()
-  }
-  return {
-    isFullscreen: native.isFullscreen || fallback.isFullscreen,
-    isFallbackFullscreen: fallback.isFullscreen,
-    toggle,
-  }
-}
 
 function usePdfPageRender({
   pdf,

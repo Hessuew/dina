@@ -94,24 +94,29 @@ describe('buildMediaContentViewModel', () => {
 })
 
 describe('resolveViewerUrl', () => {
-  it('returns the signed viewer URL when the load has not failed', () => {
-    expect(resolveViewerUrl('https://signed/doc.pdf', false)).toBe(
+  it('returns the signed viewer URL when it has not failed', () => {
+    expect(resolveViewerUrl('https://signed/doc.pdf', null)).toBe(
       'https://signed/doc.pdf',
     )
   })
 
   it('returns no usable URL when the signed viewer URL is missing', () => {
-    expect(resolveViewerUrl(null, false)).toBeNull()
+    expect(resolveViewerUrl(null, null)).toBeNull()
   })
 
-  it('returns no usable URL after a load failure even with a URL present', () => {
-    expect(resolveViewerUrl('https://signed/vid.mp4', true)).toBeNull()
+  it('keeps the failed URL unusable after a load failure', () => {
+    expect(
+      resolveViewerUrl('https://signed/vid.mp4', 'https://signed/vid.mp4'),
+    ).toBeNull()
   })
 
-  it('recovers the URL once a fresh URL arrives without a failure', () => {
-    expect(resolveViewerUrl('https://signed/vid.mp4', false)).toBe(
-      'https://signed/vid.mp4',
-    )
+  it('recovers immediately once a fresh URL arrives', () => {
+    expect(
+      resolveViewerUrl(
+        'https://signed/vid.mp4?token=BBB',
+        'https://signed/vid.mp4?token=AAA',
+      ),
+    ).toBe('https://signed/vid.mp4?token=BBB')
   })
 })
 

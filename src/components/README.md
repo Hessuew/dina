@@ -49,11 +49,13 @@ This folder contains:
     Document loads go through `pdf-document.domain.ts`: a cancelled/superseded
     PDF.js task must never write state for the current URL, and the storage
     object path (`resolvePdfDocumentKey`) — not the signed URL — identifies the
-    document, so a retry preserves the reader's page. Every signed-URL viewer
-    (PDF, Office iframe, uploaded video) shares one recovery path: a missing or
-    failed URL shows a Try again state that re-runs the route loader to reissue
-    the signed URL (1h TTL, ADR 0002); the new URL alone drives the reload, so
-    no duplicate request goes out against the stale URL.
+    document, so a retry preserves the reader's page. Signed-URL viewers
+    recover via `resolveViewerUrl` + a loader re-run that reissues the URL
+    (1h TTL, ADR 0002): PDF/video surface Try again on detected failures,
+    while Office shows a persistent "Document not loading?" action because
+    cross-origin iframe failures are undetectable (the iframe remounts via
+    `key` when the fresh URL arrives). Only the new URL drives reloads — no
+    duplicate fetch against a stale URL.
 
 ## Key Invariants / Assumptions
 

@@ -4,7 +4,7 @@ import {
   FileTextIcon,
   VideoIcon,
 } from 'lucide-react'
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { YouTubeEmbed } from '../youtube-embed/YouTubeEmbed'
 import type { ReactNode } from 'react'
@@ -23,12 +23,16 @@ import {
   buildMediaDownloadFilename,
   shouldShowMediaDownload,
 } from '@/utils/library/domain/library.domain'
+import { cn } from '@/lib/utils'
 
 const PdfViewer = lazy(() =>
   import('@/components/library/PdfViewer').then((m) => ({
     default: m.PdfViewer,
   })),
 )
+
+const DARK_SURFACE_ACTION_CLASSES =
+  'group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white'
 
 function clickDownloadAnchor(href: string, filename: string) {
   const anchor = document.createElement('a')
@@ -122,7 +126,7 @@ function MediaDownloadLink({
       rel="noopener noreferrer"
       aria-busy={isDownloading}
       onClick={onDownload}
-      className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-3 py-1.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+      className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-3 py-1.5')}
     >
       {isDownloading ? 'Downloading' : 'Download'}
       <DownloadIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
@@ -168,7 +172,7 @@ function UnembeddableVideo({ fileUrl }: { fileUrl: string }) {
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-5 py-2.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+        className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
       >
         Open original link
         <ExternalLinkIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
@@ -190,7 +194,7 @@ function ViewerUnavailable({
       <button
         type="button"
         onClick={onRetry}
-        className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-5 py-2.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+        className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
       >
         Try again
       </button>
@@ -205,10 +209,11 @@ function UploadedVideoContent({
   viewerUrl: string | null
   onRetry: () => void
 }) {
-  const [playbackFailed, setPlaybackFailed] = useState(false)
-  useEffect(() => setPlaybackFailed(false), [viewerUrl])
+  // The failure pins to the URL that produced it, so a freshly issued URL
+  // recovers in the same render — no intermediate stale error frame.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
-  const usableUrl = resolveViewerUrl(viewerUrl, playbackFailed)
+  const usableUrl = resolveViewerUrl(viewerUrl, failedUrl)
   if (!usableUrl) {
     return <ViewerUnavailable message="Video unavailable." onRetry={onRetry} />
   }
@@ -220,7 +225,7 @@ function UploadedVideoContent({
         playsInline
         preload="metadata"
         src={usableUrl}
-        onError={() => setPlaybackFailed(true)}
+        onError={() => setFailedUrl(usableUrl)}
         className="aspect-video w-full"
       >
         Your browser does not support video playback.
@@ -240,7 +245,7 @@ function PdfContent({
   onPageChange?: (page: number) => void
   onRetry: () => void
 }) {
-  const usableUrl = resolveViewerUrl(viewerUrl, false)
+  const usableUrl = resolveViewerUrl(viewerUrl, null)
   if (!usableUrl) {
     return (
       <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
@@ -273,19 +278,35 @@ function OfficeContent({
   viewerUrl: string | null
   onRetry: () => void
 }) {
-  const usableUrl = resolveViewerUrl(viewerUrl, false)
+  const usableUrl = resolveViewerUrl(viewerUrl, null)
   if (!usableUrl) {
     return (
       <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
     )
   }
 
+  // Cross-origin iframe failures can't be detected, so the recovery action
+  // stays visible: retrying re-issues the signed URL, and keying the iframe
+  // on it remounts the embed against the fresh URL.
   return (
-    <div className="aspect-4/3 w-full">
-      <iframe
-        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(usableUrl)}`}
-        className="size-full border-0"
-      />
+    <div>
+      <div className="aspect-4/3 w-full">
+        <iframe
+          key={usableUrl}
+          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(usableUrl)}`}
+          title="Document preview"
+          className="size-full border-0"
+        />
+      </div>
+      <div className="flex justify-center px-6 py-4">
+        <button
+          type="button"
+          onClick={onRetry}
+          className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
+        >
+          Document not loading? Try again
+        </button>
+      </div>
     </div>
   )
 }
