@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createPdfDocumentLoad } from './pdf-document.domain'
+import {
+  createPdfDocumentLoad,
+  resolvePdfDocumentKey,
+} from './pdf-document.domain'
 import type { PdfDocumentTask } from './pdf-document.domain'
 
 type Doc = { numPages: number }
@@ -20,6 +23,30 @@ function fakeTask(
 function fakeCallbacks() {
   return { onLoaded: vi.fn(), onFailed: vi.fn() }
 }
+
+describe('resolvePdfDocumentKey', () => {
+  it('identifies the same document across re-issued signed URLs', () => {
+    const first =
+      'https://x.supabase.co/storage/v1/object/sign/media-library/u1/book.pdf?token=AAA'
+    const second =
+      'https://x.supabase.co/storage/v1/object/sign/media-library/u1/book.pdf?token=BBB'
+    expect(resolvePdfDocumentKey(first)).toBe(resolvePdfDocumentKey(second))
+  })
+
+  it('distinguishes different documents on different paths', () => {
+    const first =
+      'https://x.supabase.co/storage/v1/object/sign/media-library/u1/book.pdf?token=AAA'
+    const other =
+      'https://x.supabase.co/storage/v1/object/sign/media-library/u1/other.pdf?token=AAA'
+    expect(resolvePdfDocumentKey(first)).not.toBe(resolvePdfDocumentKey(other))
+  })
+
+  it('keeps a query-free URL as its own key', () => {
+    expect(resolvePdfDocumentKey('https://x.com/notes.pdf')).toBe(
+      'https://x.com/notes.pdf',
+    )
+  })
+})
 
 describe('createPdfDocumentLoad', () => {
   it('reports a loaded document', async () => {
@@ -76,6 +103,25 @@ describe('createPdfDocumentLoad', () => {
 
     expect(firstCallbacks.onLoaded).not.toHaveBeenCalled()
     expect(firstCallbacks.onFailed).not.toHaveBeenCalled()
+  })
+
+  it('recovers when a retry load succeeds after a failure', async () => {
+    const first = fakeTask()
+    const firstCallbacks = fakeCallbacks()
+    createPdfDocumentLoad(first.task, firstCallbacks)
+
+    first.rejectTask(new Error('network'))
+    await first.task.promise.catch(() => {})
+    expect(firstCallbacks.onFailed).toHaveBeenCalledTimes(1)
+
+    const second = fakeTask()
+    const secondCallbacks = fakeCallbacks()
+    createPdfDocumentLoad(second.task, secondCallbacks)
+    second.resolveTask({ numPages: 3 })
+    await second.task.promise
+
+    expect(secondCallbacks.onLoaded).toHaveBeenCalledWith({ numPages: 3 })
+    expect(secondCallbacks.onFailed).not.toHaveBeenCalled()
   })
 
   it('destroys the task on cancel', () => {

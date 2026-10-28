@@ -1,3 +1,10 @@
+// Signed viewer URLs are re-issued per view — a fresh token on the same
+// storage object path — so the path, not the full URL, identifies which
+// document the reader opened.
+export function resolvePdfDocumentKey(url: string): string {
+  return url.split('?')[0]
+}
+
 // PDF.js loading tasks reject their `promise` when `destroy()` runs during
 // cleanup — asynchronously, after the next effect already reset its state.
 // `cancelled` closes the window so a superseded task can neither flag an error

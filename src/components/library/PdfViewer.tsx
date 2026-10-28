@@ -14,10 +14,13 @@ import {
 // Legacy build polyfills Promise.withResolvers for older browsers (DINA-Z).
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { Dispatch, Ref, RefObject, SetStateAction } from 'react'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
-import { createPdfDocumentLoad } from '@/components/library/pdf-document.domain'
+import {
+  createPdfDocumentLoad,
+  resolvePdfDocumentKey,
+} from '@/components/library/pdf-document.domain'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -51,12 +54,18 @@ function usePdfDocument(url: string) {
   const [numPages, setNumPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [attempt, setAttempt] = useState(0)
+  const docKey = resolvePdfDocumentKey(url)
+  const docKeyRef = useRef(docKey)
 
   useEffect(() => {
     setLoading(true)
     setError(false)
-    setPageNum(1)
+    // A re-issued signed URL for the same document keeps the reader's page;
+    // only opening a different document resets to page one.
+    if (docKeyRef.current !== docKey) {
+      docKeyRef.current = docKey
+      setPageNum(1)
+    }
     setPdf(null)
 
     let task: ReturnType<typeof pdfjsLib.getDocument>
@@ -80,20 +89,20 @@ function usePdfDocument(url: string) {
       },
     })
     return () => load.cancel()
-  }, [url, attempt])
+  }, [url, docKey])
 
-  // Reload the route loader so a retry also gets a fresh signed URL — the
-  // issued one expires after an hour (ADR 0002).
+  // Reload the route loader so a retry gets a fresh signed URL — the issued
+  // one expires after an hour (ADR 0002). The new URL drives the reload, so
+  // no request ever goes out against the stale URL.
   const retry = useCallback(() => {
-    setAttempt((current) => current + 1)
     void router.invalidate()
   }, [router])
 
-  return { pdf, pageNum, setPageNum, numPages, loading, error, retry }
+  return { pdf, pageNum, setPageNum, numPages, loading, error, retry, docKey }
 }
 
 function useViewerSize(
-  containerRef: RefObject<HTMLDivElement | null>,
+  container: HTMLDivElement | null,
   isFullscreen: boolean,
 ) {
   const [viewerSize, setViewerSize] = useState<ViewerSize>({
@@ -103,7 +112,7 @@ function useViewerSize(
 
   useEffect(() => {
     const updateViewerSize = () => {
-      const width = containerRef.current?.clientWidth ?? 800
+      const width = container?.clientWidth ?? 800
       const height = Math.max(
         MIN_PAGE_HEIGHT,
         window.innerHeight -
@@ -124,38 +133,35 @@ function useViewerSize(
       typeof ResizeObserver === 'undefined'
         ? null
         : new ResizeObserver(updateViewerSize)
-    if (containerRef.current) resizeObserver?.observe(containerRef.current)
+    if (container) resizeObserver?.observe(container)
     window.addEventListener('resize', updateViewerSize)
 
     return () => {
       resizeObserver?.disconnect()
       window.removeEventListener('resize', updateViewerSize)
     }
-  }, [containerRef, isFullscreen])
+  }, [container, isFullscreen])
 
   return viewerSize
 }
 
-function useNativeFullscreen(containerRef: RefObject<HTMLDivElement | null>) {
+function useNativeFullscreen(container: HTMLDivElement | null) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
 
   useEffect(() => {
     const update = () => {
-      setIsFullscreen(document.fullscreenElement === containerRef.current)
+      setIsFullscreen(document.fullscreenElement === container)
       setIsSupported(
-        Boolean(
-          containerRef.current?.requestFullscreen && document.exitFullscreen,
-        ),
+        Boolean(container?.requestFullscreen && document.exitFullscreen),
       )
     }
     update()
     document.addEventListener('fullscreenchange', update)
     return () => document.removeEventListener('fullscreenchange', update)
-  }, [containerRef])
+  }, [container])
 
   const toggle = async (): Promise<'handled' | 'fallback'> => {
-    const container = containerRef.current
     if (!container) return 'handled'
     return toggleNativePdfFullscreen(document, container)
   }
@@ -182,14 +188,21 @@ function useFallbackFullscreen() {
 
   return {
     isFullscreen,
-    enter: () => setIsFullscreen(true),
-    toggle: () => setIsFullscreen((current) => !current),
+    enter: useCallback(() => setIsFullscreen(true), []),
+    toggle: useCallback(() => setIsFullscreen((current) => !current), []),
   }
 }
 
-function usePdfFullscreen(containerRef: RefObject<HTMLDivElement | null>) {
-  const native = useNativeFullscreen(containerRef)
+function usePdfFullscreen(container: HTMLDivElement | null) {
+  const native = useNativeFullscreen(container)
   const fallback = useFallbackFullscreen()
+
+  // A surface unmount (e.g. the error state) would strand fallback fullscreen
+  // with body overflow hidden — exit it so the page stays usable.
+  useEffect(() => {
+    if (container == null && fallback.isFullscreen) fallback.toggle()
+  }, [container, fallback.isFullscreen, fallback.toggle])
+
   const toggle = () => {
     if (fallback.isFullscreen) {
       fallback.toggle()
@@ -659,7 +672,7 @@ function PdfCanvasViewport({
 }
 
 type PdfViewerSurfaceProps = {
-  containerRef: RefObject<HTMLDivElement | null>
+  containerRef: Ref<HTMLDivElement>
   canvasRef: RefObject<HTMLCanvasElement | null>
   viewportRef: RefObject<HTMLDivElement | null>
   pageSize: ViewerSize
@@ -757,7 +770,7 @@ function usePdfReaderChrome(
 }
 
 function usePdfResume({
-  url,
+  docKey,
   pdf,
   numPages,
   pageNum,
@@ -765,7 +778,7 @@ function usePdfResume({
   setPageNum,
   onPageChange,
 }: {
-  url: string
+  docKey: string
   pdf: PDFDocumentProxy | null
   numPages: number
   pageNum: number
@@ -775,7 +788,7 @@ function usePdfResume({
 }) {
   const [resumeApplied, setResumeApplied] = useState(false)
 
-  useEffect(() => setResumeApplied(false), [url])
+  useEffect(() => setResumeApplied(false), [docKey])
   useEffect(() => {
     const resumePage = resolvePdfResumePage({
       initialPage,
@@ -837,15 +850,17 @@ export function PdfViewer({
   initialPage?: number | null
   onPageChange?: (page: number) => void
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  // Callback-ref state (not a RefObject) so the error state's surface
+  // unmount/remount re-runs the size and fullscreen observers on the new node.
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [pageSize, setPageSize] = useState<ViewerSize>({ width: 0, height: 0 })
-  const { pdf, pageNum, setPageNum, numPages, loading, error, retry } =
+  const { pdf, pageNum, setPageNum, numPages, loading, error, retry, docKey } =
     usePdfDocument(url)
   const { isFullscreen, isFallbackFullscreen, toggle } =
-    usePdfFullscreen(containerRef)
-  const viewerSize = useViewerSize(containerRef, isFullscreen)
+    usePdfFullscreen(containerEl)
+  const viewerSize = useViewerSize(containerEl, isFullscreen)
   const chrome = usePdfReaderChrome(isFullscreen, numPages, setPageNum)
   const zoom = usePdfPagePipeline({
     url,
@@ -859,7 +874,7 @@ export function PdfViewer({
     onGesture: chrome.handleGesture,
   })
   usePdfResume({
-    url,
+    docKey,
     pdf,
     numPages,
     pageNum,
@@ -874,7 +889,7 @@ export function PdfViewer({
 
   return (
     <PdfViewerSurface
-      containerRef={containerRef}
+      containerRef={setContainerEl}
       canvasRef={canvasRef}
       viewportRef={viewportRef}
       pageSize={pageSize}

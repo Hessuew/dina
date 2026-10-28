@@ -25,6 +25,16 @@ export type MediaContentViewModel = {
   videoId: string | null
 }
 
+// A missing signed viewer URL (private storage could not issue one) or a
+// playback failure both leave no usable URL: retrying re-runs the route
+// loader, which issues a fresh signed URL (1h TTL, ADR 0002).
+export function resolveViewerUrl(
+  viewerUrl: string | null,
+  loadFailed: boolean,
+): string | null {
+  return viewerUrl && !loadFailed ? viewerUrl : null
+}
+
 export function buildMediaContentViewModel(
   media: MediaContentInput,
 ): MediaContentViewModel {

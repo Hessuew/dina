@@ -47,9 +47,13 @@ This folder contains:
     native-fullscreen element. Gestures (tap-to-toggle chrome in fullscreen,
     swipe page-turns at zoom 1) are classified in `pdf-viewer.gesture.domain.ts`.
     Document loads go through `pdf-document.domain.ts`: a cancelled/superseded
-    PDF.js task must never write state for the current URL, and the error state
-    retries by re-running the route loader to reissue the signed URL (1h TTL,
-    ADR 0002).
+    PDF.js task must never write state for the current URL, and the storage
+    object path (`resolvePdfDocumentKey`) — not the signed URL — identifies the
+    document, so a retry preserves the reader's page. Every signed-URL viewer
+    (PDF, Office iframe, uploaded video) shares one recovery path: a missing or
+    failed URL shows a Try again state that re-runs the route loader to reissue
+    the signed URL (1h TTL, ADR 0002); the new URL alone drives the reload, so
+    no duplicate request goes out against the stale URL.
 
 ## Key Invariants / Assumptions
 

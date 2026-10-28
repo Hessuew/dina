@@ -4,7 +4,8 @@ import {
   FileTextIcon,
   VideoIcon,
 } from 'lucide-react'
-import { Suspense, lazy, useCallback, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import { YouTubeEmbed } from '../youtube-embed/YouTubeEmbed'
 import type { ReactNode } from 'react'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -16,6 +17,7 @@ import type {
 import {
   buildMediaContentViewModel,
   downloadFileOrOpenTab,
+  resolveViewerUrl,
 } from '@/components/library/media-detail-viewer/media-content.domain'
 import {
   buildMediaDownloadFilename,
@@ -175,11 +177,40 @@ function UnembeddableVideo({ fileUrl }: { fileUrl: string }) {
   )
 }
 
-function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
-  if (!viewerUrl) {
-    return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Video unavailable.</p>
-    )
+function ViewerUnavailable({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center gap-4 px-6 py-8 text-center text-sm text-[#8E816D]">
+      {message}
+      <button
+        type="button"
+        onClick={onRetry}
+        className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-5 py-2.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+function UploadedVideoContent({
+  viewerUrl,
+  onRetry,
+}: {
+  viewerUrl: string | null
+  onRetry: () => void
+}) {
+  const [playbackFailed, setPlaybackFailed] = useState(false)
+  useEffect(() => setPlaybackFailed(false), [viewerUrl])
+
+  const usableUrl = resolveViewerUrl(viewerUrl, playbackFailed)
+  if (!usableUrl) {
+    return <ViewerUnavailable message="Video unavailable." onRetry={onRetry} />
   }
 
   return (
@@ -188,7 +219,8 @@ function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
         controls
         playsInline
         preload="metadata"
-        src={viewerUrl}
+        src={usableUrl}
+        onError={() => setPlaybackFailed(true)}
         className="aspect-video w-full"
       >
         Your browser does not support video playback.
@@ -201,14 +233,17 @@ function PdfContent({
   viewerUrl,
   initialPage,
   onPageChange,
+  onRetry,
 }: {
   viewerUrl: string | null
   initialPage?: number | null
   onPageChange?: (page: number) => void
+  onRetry: () => void
 }) {
-  if (!viewerUrl) {
+  const usableUrl = resolveViewerUrl(viewerUrl, false)
+  if (!usableUrl) {
     return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Document unavailable.</p>
+      <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
     )
   }
 
@@ -222,7 +257,7 @@ function PdfContent({
         }
       >
         <PdfViewer
-          url={viewerUrl}
+          url={usableUrl}
           initialPage={initialPage}
           onPageChange={onPageChange}
         />
@@ -231,17 +266,24 @@ function PdfContent({
   )
 }
 
-function OfficeContent({ viewerUrl }: { viewerUrl: string | null }) {
-  if (!viewerUrl) {
+function OfficeContent({
+  viewerUrl,
+  onRetry,
+}: {
+  viewerUrl: string | null
+  onRetry: () => void
+}) {
+  const usableUrl = resolveViewerUrl(viewerUrl, false)
+  if (!usableUrl) {
     return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Document unavailable.</p>
+      <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
     )
   }
 
   return (
     <div className="aspect-4/3 w-full">
       <iframe
-        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewerUrl)}`}
+        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(usableUrl)}`}
         className="size-full border-0"
       />
     </div>
@@ -254,12 +296,14 @@ function MediaContent({
   viewerUrl,
   initialPage,
   onPageChange,
+  onRetry,
 }: {
   viewModel: MediaContentViewModel
   media: MediaDetailViewerProps['media']
   viewerUrl: string | null
   initialPage?: number | null
   onPageChange?: (page: number) => void
+  onRetry: () => void
 }) {
   const { kind, videoId } = viewModel
 
@@ -268,15 +312,18 @@ function MediaContent({
       <YouTubeEmbed videoId={videoId ?? ''} originalUrl={media.fileUrl} />
     ),
     'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
-    'uploaded-video': <UploadedVideoContent viewerUrl={viewerUrl} />,
+    'uploaded-video': (
+      <UploadedVideoContent viewerUrl={viewerUrl} onRetry={onRetry} />
+    ),
     pdf: (
       <PdfContent
         viewerUrl={viewerUrl}
         initialPage={initialPage}
         onPageChange={onPageChange}
+        onRetry={onRetry}
       />
     ),
-    office: <OfficeContent viewerUrl={viewerUrl} />,
+    office: <OfficeContent viewerUrl={viewerUrl} onRetry={onRetry} />,
     none: (
       <p className="px-6 py-8 text-sm text-[#8E816D]">
         This file type cannot be previewed.
@@ -293,6 +340,12 @@ export function MediaDetailViewer({
   initialPage,
   onPageChange,
 }: MediaDetailViewerProps) {
+  const router = useRouter()
+  // Retry re-runs the route loader, which issues a fresh signed viewer URL
+  // (1h TTL, ADR 0002) — recovering both missing and expired URLs.
+  const refreshViewerUrl = useCallback(() => {
+    void router.invalidate()
+  }, [router])
   const viewModel = buildMediaContentViewModel(media)
   const isVideo =
     viewModel.kind === 'youtube' ||
@@ -324,6 +377,7 @@ export function MediaDetailViewer({
           viewerUrl={viewerUrl}
           initialPage={initialPage}
           onPageChange={onPageChange}
+          onRetry={refreshViewerUrl}
         />
       </div>
     </>
