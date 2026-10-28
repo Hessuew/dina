@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PdfViewer } from './PdfViewer'
+
+const mockPdfDocumentState = vi.hoisted(() => ({ error: false }))
 
 vi.mock('@/components/library/use-pdf-document', () => ({
   usePdfDocument: (url: string) => ({
@@ -10,7 +12,7 @@ vi.mock('@/components/library/use-pdf-document', () => ({
     setPageNum: vi.fn(),
     numPages: 2,
     loading: false,
-    error: false,
+    error: mockPdfDocumentState.error,
     retry: vi.fn(),
     docKey: url.split('?')[0],
   }),
@@ -23,8 +25,14 @@ describe('PdfViewer document identity', () => {
   )
 
   afterEach(() => {
+    cleanup()
+    mockPdfDocumentState.error = false
     if (scrollToDescriptor) {
-      Object.defineProperty(HTMLElement.prototype, 'scrollTo', scrollToDescriptor)
+      Object.defineProperty(
+        HTMLElement.prototype,
+        'scrollTo',
+        scrollToDescriptor,
+      )
     } else {
       Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
     }
@@ -39,6 +47,9 @@ describe('PdfViewer document identity', () => {
 
     const { rerender } = render(
       <PdfViewer url="https://files.example/book.pdf?signature=first" />,
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More reading options' }),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
     expect(
@@ -63,5 +74,46 @@ describe('PdfViewer document identity', () => {
       screen.getByRole('button', { name: 'Reset zoom' }).textContent,
     ).toContain('100%')
     expect(scrollTo).toHaveBeenCalledWith(0, 0)
+  })
+
+  it('restores zoom and scroll after a same-document load error and retry', () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    })
+
+    const { container, rerender } = render(
+      <PdfViewer url="https://files.example/book.pdf?signature=first" />,
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More reading options' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+
+    const viewport = container.querySelector('.overflow-auto')
+    expect(viewport).not.toBeNull()
+    if (!viewport) throw new Error('PDF viewport should be rendered')
+    viewport.scrollLeft = 18
+    viewport.scrollTop = 42
+    fireEvent.scroll(viewport)
+
+    mockPdfDocumentState.error = true
+    rerender(<PdfViewer url="https://files.example/book.pdf?signature=first" />)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+
+    mockPdfDocumentState.error = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    rerender(
+      <PdfViewer url="https://files.example/book.pdf?signature=renewed" />,
+    )
+
+    const remountedViewport = container.querySelector('.overflow-auto')
+    expect(remountedViewport).not.toBeNull()
+    expect(remountedViewport).not.toBe(viewport)
+    expect(remountedViewport?.scrollLeft).toBe(18)
+    expect(remountedViewport?.scrollTop).toBe(42)
+    expect(
+      screen.getByRole('button', { name: 'Reset zoom' }).textContent,
+    ).toContain('125%')
   })
 })

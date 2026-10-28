@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   Dispatch,
   PointerEvent as ReactPointerEvent,
+  RefCallback,
   RefObject,
   SetStateAction,
+  UIEvent,
 } from 'react'
 import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
 import {
@@ -158,6 +160,48 @@ function endPinch(
   if (refs.points.current.size < 2) refs.pinch.current = null
 }
 
+function usePdfViewportScroll(
+  viewportRef: RefObject<HTMLDivElement | null>,
+  zoomResetKey: string,
+  scrollResetKey: string,
+) {
+  const scrollMemoryRef = useRef<{
+    key: string
+    left: number
+    top: number
+  } | null>(null)
+
+  useEffect(() => {
+    scrollMemoryRef.current = null
+    viewportRef.current?.scrollTo(0, 0)
+  }, [scrollResetKey, zoomResetKey, viewportRef])
+
+  const attachViewport = useCallback<RefCallback<HTMLDivElement>>(
+    (viewport) => {
+      viewportRef.current = viewport
+      const memory = scrollMemoryRef.current
+      if (viewport && memory?.key === scrollResetKey) {
+        viewport.scrollLeft = memory.left
+        viewport.scrollTop = memory.top
+      }
+    },
+    [scrollResetKey, viewportRef],
+  )
+  const onScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const viewport = event.currentTarget
+      scrollMemoryRef.current = {
+        key: scrollResetKey,
+        left: viewport.scrollLeft,
+        top: viewport.scrollTop,
+      }
+    },
+    [scrollResetKey],
+  )
+
+  return { attachViewport, onScroll }
+}
+
 export function usePdfZoom(
   viewportRef: RefObject<HTMLDivElement | null>,
   zoomResetKey: string,
@@ -168,6 +212,11 @@ export function usePdfZoom(
   const pointsRef = useRef(new Map<number, Point>())
   const pinchRef = useRef<PinchStart | null>(null)
   const tapSwipeRef = useRef<TapSwipeStart | null>(null)
+  const viewportScroll = usePdfViewportScroll(
+    viewportRef,
+    zoomResetKey,
+    scrollResetKey,
+  )
   const refs = {
     viewport: viewportRef,
     points: pointsRef,
@@ -178,10 +227,6 @@ export function usePdfZoom(
   useEffect(() => {
     setZoom(1)
   }, [zoomResetKey])
-
-  useEffect(() => {
-    viewportRef.current?.scrollTo(0, 0)
-  }, [scrollResetKey, zoomResetKey, viewportRef])
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) =>
     startPinch(event, refs, zoom)
@@ -197,6 +242,8 @@ export function usePdfZoom(
     zoomIn: () => setZoom((current) => clampPdfZoom(current + 0.25)),
     zoomOut: () => setZoom((current) => clampPdfZoom(current - 0.25)),
     resetZoom: () => setZoom(1),
+    attachViewport: viewportScroll.attachViewport,
+    onScroll: viewportScroll.onScroll,
     pointerHandlers: {
       onPointerDown,
       onPointerMove,

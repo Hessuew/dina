@@ -48,6 +48,21 @@ describe('usePdfFullscreen', () => {
     expect(result.current.isFullscreen).toBe(false)
   })
 
+  it('does not report fullscreen when the viewer container is missing', () => {
+    const { result, rerender } = renderHook(
+      ({ container }) => usePdfFullscreen(container),
+      {
+        initialProps: {
+          container: document.createElement('div') as HTMLDivElement | null,
+        },
+      },
+    )
+
+    rerender({ container: null })
+
+    expect(result.current.isFullscreen).toBe(false)
+  })
+
   it('reconnects the fullscreenchange listener to the remounted node', () => {
     Object.defineProperty(document, 'exitFullscreen', {
       value: vi.fn(() => Promise.resolve()),

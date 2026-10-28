@@ -10,7 +10,13 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
 } from 'lucide-react'
-import type { Dispatch, Ref, RefObject, SetStateAction } from 'react'
+import type {
+  Dispatch,
+  Ref,
+  RefCallback,
+  RefObject,
+  SetStateAction,
+} from 'react'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import type { PdfGesture } from '@/components/library/pdf-viewer.gesture.domain'
 import type { ViewerSize } from '@/components/library/use-pdf-viewer-size'
@@ -445,13 +451,15 @@ function PdfCanvasViewport({
   pageSize,
   zoom,
   isFullscreen,
+  onScroll,
   pointerHandlers,
 }: {
   canvasRef: RefObject<HTMLCanvasElement | null>
-  viewportRef: RefObject<HTMLDivElement | null>
+  viewportRef: RefCallback<HTMLDivElement>
   pageSize: ViewerSize
   zoom: number
   isFullscreen: boolean
+  onScroll: ReturnType<typeof usePdfZoom>['onScroll']
   pointerHandlers: ReturnType<typeof usePdfZoom>['pointerHandlers']
 }) {
   return (
@@ -464,6 +472,7 @@ function PdfCanvasViewport({
       // them to the browser would let scroll handling claim the gesture and fire
       // pointercancel, killing swipe page-turns. Zoomed, native pan owns them.
       style={{ touchAction: zoom > 1 ? 'pan-x pan-y' : 'pan-y' }}
+      onScroll={onScroll}
       {...pointerHandlers}
     >
       <div className="flex min-h-full w-max min-w-full items-center justify-center">
@@ -483,7 +492,7 @@ function PdfCanvasViewport({
 type PdfViewerSurfaceProps = {
   containerRef: Ref<HTMLDivElement>
   canvasRef: RefObject<HTMLCanvasElement | null>
-  viewportRef: RefObject<HTMLDivElement | null>
+  viewportRef: RefCallback<HTMLDivElement>
   pageSize: ViewerSize
   zoom: ReturnType<typeof usePdfZoom>
   pageNum: number
@@ -512,6 +521,7 @@ function PdfViewerSurface(props: PdfViewerSurfaceProps) {
       <PdfCanvasViewport
         canvasRef={props.canvasRef}
         viewportRef={props.viewportRef}
+        onScroll={props.zoom.onScroll}
         pageSize={props.pageSize}
         zoom={props.zoom.zoom}
         isFullscreen={props.isFullscreen}
@@ -700,7 +710,7 @@ export function PdfViewer({
     <PdfViewerSurface
       containerRef={setContainerEl}
       canvasRef={canvasRef}
-      viewportRef={viewportRef}
+      viewportRef={zoom.attachViewport}
       pageSize={pageSize}
       zoom={zoom}
       pageNum={pageNum}

@@ -7,7 +7,9 @@ function useNativeFullscreen(container: HTMLDivElement | null) {
 
   useEffect(() => {
     const update = () => {
-      setIsFullscreen(document.fullscreenElement === container)
+      setIsFullscreen(
+        container != null && document.fullscreenElement === container,
+      )
       setIsSupported(
         Boolean(container?.requestFullscreen && document.exitFullscreen),
       )

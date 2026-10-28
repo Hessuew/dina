@@ -8,7 +8,7 @@ export default defineConfig({
     environment: 'node',
     isolate: false,
     fsModuleCache: true,
-    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
     exclude: [...configDefaults.exclude, 'src/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
