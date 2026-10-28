@@ -28,10 +28,16 @@ attempts.
    after that they are rejected with a typed `ValidationError`.
 4. **Lazy finalization, no cron.** Any server path that touches an attempt (resume read,
    save, submit, grading list) first finalizes it if expired: auto-grade multiple-choice
-   answers and flip `in_progress → submitted` with `submittedAt = deadlineAt`. The flip is
-   a conditional `UPDATE … WHERE status = 'in_progress'` returning the row, so concurrent
-   finalizers race safely — exactly one wins, losers re-read. Nothing depends on the flip
-   happening before someone reads the row, which is what makes cron unnecessary.
+   answers and flip `in_progress → submitted` with `submittedAt = deadlineAt`. The flip —
+   like every scoring transition (answer autosave, submit/lazy finalization, manual
+   grading, grading finalization) — runs inside a transaction that first takes the
+   exams-row `FOR UPDATE` lock, the same lock the authoring save and its answer-key
+   rescore take, so concurrent scorers serialize rather than race and never persist
+   verdicts computed against a stale key. Save eligibility is re-evaluated under the lock
+   with a fresh timestamp. The conditional `UPDATE … WHERE status = 'in_progress'`
+   returning the row remains the double-finalize guard inside the lock — the loser
+   re-reads the committed row. Nothing depends on the flip happening before someone reads
+   the row, which is what makes cron unnecessary.
 5. **Correct-answer secrecy via server projection.** Student-facing payloads are built
    through redaction domain functions that strip `isCorrect` from options and hide
    scores/per-answer correctness until the attempt is `graded` (same pattern as the
