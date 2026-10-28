@@ -695,17 +695,15 @@ async function finalizeIfExpired(
   ) {
     return attempt
   }
-  return finalizeAttempt(attempt, attempt.deadlineAt)
+  return finalizeAttempt(attempt)
 }
 
 async function finalizeAttempt(
   attempt: ExamAttemptRow,
-  submittedAt: Date,
 ): Promise<ExamAttemptRow> {
   const finalized = await finalizeAttemptScoring({
     attemptId: attempt.id,
     examId: attempt.examId,
-    submittedAt,
   })
   if (finalized) return finalized
   const current = await findAttemptById(attempt.id)
@@ -794,6 +792,12 @@ async function saveAnswerForAttempt(
       details: { attemptId: attempt.id },
     })
   }
+  if (outcome.kind === 'expired') {
+    await finalizeIfExpired(attempt, new Date())
+    throw new ValidationError('Exam time has expired', {
+      details: { attemptId: attempt.id },
+    })
+  }
   if (outcome.kind === 'missing_question') {
     throw new NotFoundError('Question not found')
   }
@@ -808,7 +812,7 @@ async function saveAnswerForAttempt(
   return {
     answer: outcome.answer,
     question: outcome.question,
-    remainingMs: remainingMs(now, attempt.deadlineAt),
+    remainingMs: remainingMs(outcome.now, attempt.deadlineAt),
   }
 }
 
@@ -971,18 +975,17 @@ export async function submitAttemptService(
     })
     return redactAttemptForStudent(attempt)
   }
-  const now = new Date()
-  const submittedAt = isSaveAllowed(now, attempt.deadlineAt)
-    ? now
-    : attempt.deadlineAt
   try {
-    const finalized = await finalizeAttempt(attempt, submittedAt)
+    const finalized = await finalizeAttempt(attempt)
     logExamAttemptEvent('info', 'exam_attempt_submitted', context, {
       status: finalized.status,
       attemptId: attempt.id,
       examId: attempt.examId,
       studentId: userId,
-      submissionMode: submittedAt === now ? 'manual' : 'deadline',
+      submissionMode:
+        finalized.submittedAt?.getTime() === finalized.deadlineAt.getTime()
+          ? 'deadline'
+          : 'manual',
     })
     return redactAttemptForStudent(finalized)
   } catch (error) {

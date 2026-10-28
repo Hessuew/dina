@@ -26,6 +26,7 @@ import {
   isOptionOfQuestion,
   validateAnswerShape,
 } from '@/utils/exam/domain/exam-answer.domain'
+import { isSaveAllowed } from '@/utils/exam/domain/exam-timing.domain'
 
 /* v8 ignore start */
 
@@ -57,7 +58,6 @@ async function withExamScoringLock<T>(
 export async function finalizeAttemptScoring(input: {
   attemptId: string
   examId: string
-  submittedAt: Date
 }): Promise<ExamAttemptRow | undefined> {
   return withExamScoringLock(input.examId, async (tx) => {
     const current = await findAttemptByIdInTransaction(tx, input.attemptId)
@@ -76,18 +76,28 @@ export async function finalizeAttemptScoring(input: {
     const results = autoGradeMultipleChoice(answers, questions, options)
     await updateExamAnswerAutoGradesInTransaction(tx, results)
     const autoScore = results.reduce((sum, r) => sum + r.awardedPoints, 0)
+    const now = new Date()
+    const submittedAt = isSaveAllowed(now, current.deadlineAt)
+      ? now
+      : current.deadlineAt
     return markAttemptSubmittedIfInProgressInTransaction(
       tx,
       input.attemptId,
-      input.submittedAt,
+      submittedAt,
       autoScore,
     )
   })
 }
 
 export type SaveAnswerOutcome =
-  | { kind: 'saved'; answer: ExamAnswerRow; question: ExamQuestionRow }
+  | {
+      kind: 'saved'
+      answer: ExamAnswerRow
+      question: ExamQuestionRow
+      now: Date
+    }
   | { kind: 'attempt_finalized' }
+  | { kind: 'expired' }
   | { kind: 'missing_question' }
   | { kind: 'invalid_shape'; message: string }
   | { kind: 'foreign_option' }
@@ -95,8 +105,8 @@ export type SaveAnswerOutcome =
 /**
  * Persists one autosaved answer under the exam lock, so the upsert can never
  * land between the authoring guard's reference read and its option delete.
- * Question shape and option membership are validated against the post-lock
- * state.
+ * Question shape, option membership, and the save window are validated
+ * against the post-lock state and timestamp.
  */
 export async function saveAnswerScoring(input: {
   examId: string
@@ -109,6 +119,10 @@ export async function saveAnswerScoring(input: {
     const attempt = await findAttemptByIdInTransaction(tx, input.attemptId)
     if (!attempt || attempt.status !== 'in_progress') {
       return { kind: 'attempt_finalized' }
+    }
+    const now = new Date()
+    if (!isSaveAllowed(now, attempt.deadlineAt)) {
+      return { kind: 'expired' }
     }
     const questions = await findExamQuestionsByExamIdInTransaction(
       tx,
@@ -138,7 +152,7 @@ export async function saveAnswerScoring(input: {
       selectedOptionId: input.selectedOptionId ?? null,
       textAnswer: input.textAnswer ?? null,
     })
-    return { kind: 'saved', answer, question }
+    return { kind: 'saved', answer, question, now }
   })
 }
 

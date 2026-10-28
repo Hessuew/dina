@@ -1122,6 +1122,53 @@ describe('exam taking (integration)', () => {
     expect(attempt.submittedAt).toEqual(deadlineAt)
   })
 
+  it('rejects an autosave that queued on the exam lock past the grace window', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId, mcQuestionId, correctOptionId } =
+      await seedPublishedMcExam(teacherId)
+    const deadlineAt = new Date(Date.now() + 60_000)
+    const attemptId = await seedExamAttempt({ examId, studentId, deadlineAt })
+
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      let releaseLock!: () => void
+      const lockSpy = vi
+        .spyOn(sharedRepository, 'lockExamInTransaction')
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              releaseLock = resolve
+            }),
+        )
+      const savePromise = saveAnswerService(
+        {
+          attemptId,
+          questionId: mcQuestionId,
+          selectedOptionId: correctOptionId,
+        },
+        studentId,
+      )
+      const rejection = expect(savePromise).rejects.toThrow(
+        'Exam time has expired',
+      )
+      await vi.waitFor(() => expect(lockSpy).toHaveBeenCalled())
+
+      vi.setSystemTime(new Date(deadlineAt.getTime() + 31_000))
+      releaseLock()
+      await rejection
+
+      expect(
+        await sharedRepository.findExamAnswersByAttempt(attemptId),
+      ).toHaveLength(0)
+      const attempt = (await sharedRepository.findAttemptById(attemptId))!
+      expect(attempt.status).toBe('submitted')
+      expect(attempt.submittedAt).toEqual(deadlineAt)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('lazily finalizes an expired attempt on resume read with submittedAt = deadlineAt', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
