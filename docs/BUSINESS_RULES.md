@@ -340,8 +340,7 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Branch Strategy
 
-- `main` - Production-ready
-- `develop` - Dev branch
+- `main` - Only long-lived branch; production releases promote an exact validated SHA under an immutable tag (ADR 0026)
 - `feature/*` - Feature branches
 - `fix/*` - Bug fix branches
 

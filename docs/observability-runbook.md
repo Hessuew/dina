@@ -150,6 +150,21 @@ recorded previous version at `100` — or finish promoting the new version when
 its stage evidence passed — and then re-run the exact-version smoke command
 above against the version now serving traffic.
 
+When the version now serving traffic is an unannotated legacy Worker, the
+exact-version health command fails closed on the missing headers by design.
+Verify the rollback with `bun run smoke:rollback` instead; it accepts the
+documented `legacy-header-compatible` mode only when
+`SMOKE_LEGACY_TARGET=true`, which should match a version id listed in the
+protected `CLOUDFLARE_LEGACY_VERSION_IDS` variable:
+
+```sh
+SMOKE_BASE_URL=https://christ-dina.org \
+SMOKE_VERSION_ID=<cloudflare-version-id> \
+SMOKE_WORKER_NAME=christ-dina \
+SMOKE_LEGACY_TARGET=true \
+bun run smoke:rollback
+```
+
 ## Alert response matrix
 
 ### Worker or site unavailable

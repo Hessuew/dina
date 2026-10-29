@@ -222,6 +222,8 @@ The following are intentionally not automated by this repository and must be
 completed in the external systems before Phase 3 is considered operational:
 
 - protect `main` with pull request, quality-gate, and no-force-push rules;
+- create the active immutable `v*` tag ruleset and the scoped
+  `RELEASE_TAG_RULESET_TOKEN` secret the resolve job uses to verify it;
 - configure the `production` environment with a five-minute wait timer and sole
   contributor self-approval;
 - create least-privilege `CLOUDFLARE_API_TOKEN` and
@@ -232,14 +234,23 @@ completed in the external systems before Phase 3 is considered operational:
   the protected `CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL`, then set
   `CLOUDFLARE_VERSION_AFFINITY_READY=true`;
 - configure Better Stack and Cloudflare alerts to Slack `#incidents` plus the
-  documented email fallback;
+  documented email fallback, then set `RELEASE_ALERTS_SLACK_INCIDENTS` and
+  `RELEASE_ALERTS_EMAIL_FALLBACK` once delivery is verified;
+- point `BETTER_STACK_APPLICATION_ID` at the `DINA production` Errors
+  application and approve the public journey paths in
+  `PRODUCTION_JOURNEY_PATHS`;
 - configure the protected release-evidence adapter consumed by
   `bun run scripts/release-evidence.ts`;
 - activate `/healthz` and `/readyz` monitors and verify source-map correlation;
 - query Cloudflare per-version rollout metrics or keep production dispatch
   manual/fail-closed;
-- rehearse Worker rollback and isolated Supabase restore; and
-- link the current release, dashboard, and runbook URLs from Notion.
+- list approved pre-feature Worker versions in
+  `CLOUDFLARE_LEGACY_VERSION_IDS` so the first tagged release has a verified
+  rollback target;
+- rehearse Worker rollback and isolated Supabase restore;
+- link the current release, dashboard, and runbook URLs from Notion; and
+- set `PRODUCTION_RELEASE_ENABLED=true` only when every control above is
+  verified.
 
 ## Related procedures
 

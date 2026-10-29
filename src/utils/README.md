@@ -547,9 +547,11 @@ feature consumes them.
     HttpOnly, Secure, SameSite cookie so split deployments keep HTML and assets
     on one Worker version.
   - `asset-routing.ts` runs the application first and falls back to the
-    Cloudflare `ASSETS` binding only for application 404 responses. Release
-    journey smoke must continue to require content-hashed asset paths; an
-    unhashed asset is not evidence of a versioned production build.
+    Cloudflare `ASSETS` binding only when the application returns 404 for a
+    GET/HEAD request whose path ends in a file extension; application 404
+    pages and JSON misses keep their own response. Release journey smoke must
+    continue to require content-hashed asset paths; an unhashed asset is not
+    evidence of a versioned production build.
   - `server.ts` dispatches the protected release endpoints before ordinary
     application handling, wraps application requests with release metrics, and
     applies version headers to the returned response.
