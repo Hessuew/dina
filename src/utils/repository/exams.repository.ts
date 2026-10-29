@@ -69,7 +69,7 @@ export async function lockExamInTransaction(
     .select({ id: exams.id })
     .from(exams)
     .where(eq(exams.id, examId))
-    .for('update')
+    .for('no key update')
 }
 
 export async function updateExamInTransaction(

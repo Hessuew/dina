@@ -31,9 +31,13 @@ attempts.
    answers and flip `in_progress → submitted` with `submittedAt = deadlineAt`. The flip —
    like every scoring transition (answer autosave, submit/lazy finalization, manual
    grading, grading finalization) — runs inside a transaction that first takes the
-   exams-row `FOR UPDATE` lock, the same lock the authoring save and its answer-key
-   rescore take, so concurrent scorers serialize rather than race and never persist
-   verdicts computed against a stale key. Save eligibility is re-evaluated under the lock
+   exams-row `FOR NO KEY UPDATE` lock, the same lock the authoring save and its
+   answer-key rescore take, so concurrent scorers serialize rather than race and never
+   persist verdicts computed against a stale key. `FOR NO KEY UPDATE` — not
+   `FOR UPDATE` — keeps attempt starts unblocked during a rescore: the
+   `exam_attempts → exams` FK check only needs `FOR KEY SHARE`, which conflicts with
+   `FOR UPDATE` but not `FOR NO KEY UPDATE`, and every exams-row write under the lock
+   touches non-key columns only. Save eligibility is re-evaluated under the lock
    with a fresh timestamp. The conditional `UPDATE … WHERE status = 'in_progress'`
    returning the row remains the double-finalize guard inside the lock — the loser
    re-reads the committed row. Nothing depends on the flip happening before someone reads
