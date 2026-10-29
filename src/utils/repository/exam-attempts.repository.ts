@@ -1,4 +1,5 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { examAttempts } from '@/db/schema'
 
@@ -76,18 +77,29 @@ export async function findAttemptsByStudent(
     .where(eq(examAttempts.studentId, studentId))
 }
 
+export async function findAttemptByIdInTransaction(
+  tx: RepositoryTransactionClient,
+  attemptId: string,
+): Promise<ExamAttemptRow | undefined> {
+  const [attempt] = await tx
+    .select()
+    .from(examAttempts)
+    .where(eq(examAttempts.id, attemptId))
+  return attempt
+}
+
 /**
  * Conditionally flips an in-progress attempt to submitted — the
  * double-finalize guard. Returns the updated row, or undefined when the
  * attempt was already submitted/graded (someone else finalized first).
  */
-export async function markAttemptSubmittedIfInProgress(
+export async function markAttemptSubmittedIfInProgressInTransaction(
+  tx: RepositoryTransactionClient,
   attemptId: string,
   submittedAt: Date,
   autoScore: number,
 ): Promise<ExamAttemptRow | undefined> {
-  const db = await getDb()
-  const [attempt] = await db
+  const [attempt] = await tx
     .update(examAttempts)
     .set({ status: 'submitted', submittedAt, autoScore, updatedAt: new Date() })
     .where(
@@ -105,14 +117,14 @@ export async function markAttemptSubmittedIfInProgress(
  * guard. Returns the updated row, or undefined when the attempt was already
  * finalized (a concurrent finalize won first).
  */
-export async function markAttemptGraded(
+export async function markAttemptGradedInTransaction(
+  tx: RepositoryTransactionClient,
   attemptId: string,
   scores: { autoScore: number; manualScore: number; totalScore: number },
   gradedBy: string,
   feedback: string | null,
 ): Promise<ExamAttemptRow | undefined> {
-  const db = await getDb()
-  const [attempt] = await db
+  const [attempt] = await tx
     .update(examAttempts)
     .set({
       status: 'graded',
@@ -127,6 +139,69 @@ export async function markAttemptGraded(
     )
     .returning()
   return attempt
+}
+
+/**
+ * Completed attempts of an exam — the rescore set after an answer-key change.
+ * In-progress attempts are excluded: they grade against the current key at
+ * submission anyway.
+ */
+export async function findCompletedAttemptsByExamInTransaction(
+  tx: RepositoryTransactionClient,
+  examId: string,
+): Promise<Array<ExamAttemptRow>> {
+  return tx
+    .select()
+    .from(examAttempts)
+    .where(
+      and(
+        eq(examAttempts.examId, examId),
+        inArray(examAttempts.status, ['submitted', 'graded']),
+      ),
+    )
+    .orderBy(asc(examAttempts.startedAt))
+}
+
+const ATTEMPT_SCORE_CHUNK_SIZE = 200
+
+/**
+ * Rewrites persisted scores after a rescore in bounded, parameter-safe
+ * chunks — one UPDATE per chunk instead of one round trip per attempt, so a
+ * large cohort cannot hold the authoring transaction open. manualScore and
+ * totalScore stay put for submitted attempts (null batch values keep the
+ * stored column), mirroring the submit-time shape until finalization.
+ */
+export async function updateExamAttemptScoresInTransaction(
+  tx: RepositoryTransactionClient,
+  scores: Array<{
+    attemptId: string
+    autoScore: number
+    manualScore?: number
+    totalScore?: number
+  }>,
+): Promise<void> {
+  for (
+    let index = 0;
+    index < scores.length;
+    index += ATTEMPT_SCORE_CHUNK_SIZE
+  ) {
+    const chunk = scores.slice(index, index + ATTEMPT_SCORE_CHUNK_SIZE)
+    await tx.execute(sql`
+      update exam_attempts
+      set auto_score = batch.auto_score,
+          manual_score = coalesce(batch.manual_score, exam_attempts.manual_score),
+          total_score = coalesce(batch.total_score, exam_attempts.total_score),
+          updated_at = ${new Date()}
+      from (values ${sql.join(
+        chunk.map(
+          (score) =>
+            sql`(${score.attemptId}::uuid, ${score.autoScore}::integer, ${score.manualScore ?? null}::integer, ${score.totalScore ?? null}::integer)`,
+        ),
+        sql`, `,
+      )}) as batch(attempt_id, auto_score, manual_score, total_score)
+      where exam_attempts.id = batch.attempt_id
+    `)
+  }
 }
 
 export async function countAttemptsByExam(examId: string): Promise<number> {

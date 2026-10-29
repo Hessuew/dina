@@ -24,9 +24,12 @@ const isAdminOrTeacher = sql`(SELECT role FROM profiles WHERE id = auth.uid()) I
 const isStudent = sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'student'`
 
 /**
- * Standalone timed exam authored by a teacher or admin. Questions are frozen
- * once status flips to 'published'; students may start an attempt between
- * opensAt and closesAt and always get the full duration once started.
+ * Standalone timed exam authored by a teacher or admin. Questions freeze at
+ * publish for regular teachers; an exam manager (admin or exam_management
+ * privilege holder) may still edit a published exam within
+ * answer-preservation limits, rescoring completed attempts in the same
+ * transaction (ADR 0017). Students may start an attempt between opensAt and
+ * closesAt and always get the full duration once started.
  */
 export const exams = pgTable(
   'exams',
