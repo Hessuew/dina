@@ -681,9 +681,11 @@ export async function getExamForStudentService(
 
 /**
  * Lazily finalizes an expired in-progress attempt: auto-grades multiple
- * choice from the saved answers and conditionally flips to submitted with
- * submittedAt = deadlineAt. Idempotent — a concurrent finalize wins the
- * conditional update and this call re-reads the result.
+ * choice from the saved answers and flips to submitted with
+ * submittedAt = deadlineAt under the exams-row scoring lock, so verdicts are
+ * always computed against the committed key. Idempotent — a concurrent
+ * finalize returns the committed row from inside the lock; the re-read
+ * fallback only fires when the attempt row vanished entirely.
  */
 async function finalizeIfExpired(
   attempt: ExamAttemptRow,
