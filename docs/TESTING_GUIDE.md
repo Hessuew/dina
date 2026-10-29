@@ -63,7 +63,12 @@ Tests live next to the code they cover:
 
 ```ts
 coverage: {
-  include: ['src/domain/**', 'src/utils/**/domain/**'],
+  include: [
+    'src/domain/**',
+    'src/utils/**/domain/**',
+    'src/hooks/**/domain/**',
+    'src/components/**/*.domain.ts',
+  ],
   thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
 }
 ```
