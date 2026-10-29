@@ -57,8 +57,10 @@ Run this **before writing the first line** of any new function, component, or ho
 
 ### Lowering component CRAP
 
-Don't chase component CRAP with render tests (no jsdom / `*.test.tsx` — coverage stays scoped
-to logic). Instead, extract a component's pure view-model logic — initial-value builders, input
+Don't chase component CRAP with render tests — coverage stays scoped to logic. (jsdom
+`*.test.tsx` exists, but only for behavioral regressions a pure domain test cannot express —
+e.g. `PdfViewer.test.tsx` asserting the reader surface stays mounted through load errors; it is
+never a CRAP paydown tool.) Instead, extract a component's pure view-model logic — initial-value builders, input
 builders, validation, mode/branch derivation — into the feature's existing
 `src/utils/<feature>/domain/` folder (already covered at 100% via the `src/utils/**/domain/**`
 glob) and unit-test it there. The component shell then only orchestrates, so its

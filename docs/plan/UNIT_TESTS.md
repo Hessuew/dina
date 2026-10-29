@@ -126,7 +126,12 @@ expect(() => validateSubmissionWindow(assignment, now)).toThrow(
 ```ts
 coverage: {
   provider: 'v8',
-  include: ['src/domain/**', 'src/utils/**/domain/**'],
+  include: [
+    'src/domain/**',
+    'src/utils/**/domain/**',
+    'src/hooks/**/domain/**',
+    'src/components/**/*.domain.ts',
+  ],
   exclude: ['src/domain/index.ts'],
   thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
 }
@@ -134,8 +139,7 @@ coverage: {
 
 ## Expanding scope later
 
-When adding hooks or component tests:
-
-1. Add `environment: 'jsdom'` or per-file `@vitest-environment jsdom` annotation
-2. Add `include` patterns for the new scope
-3. Write a new ADR updating scope and any new conventions
+Hook/component expansion began under ADR 0026 — per-file
+`@vitest-environment jsdom` annotation, `src/**/*.test.tsx` in `include`,
+`@testing-library/react` harness. Further scope expansion still requires a new
+ADR updating scope and conventions.

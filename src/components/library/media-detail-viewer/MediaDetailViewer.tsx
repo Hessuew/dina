@@ -4,7 +4,8 @@ import {
   FileTextIcon,
   VideoIcon,
 } from 'lucide-react'
-import { Suspense, lazy, useCallback, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import { YouTubeEmbed } from '../youtube-embed/YouTubeEmbed'
 import type { ReactNode } from 'react'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -16,17 +17,22 @@ import type {
 import {
   buildMediaContentViewModel,
   downloadFileOrOpenTab,
+  resolveViewerUrl,
 } from '@/components/library/media-detail-viewer/media-content.domain'
 import {
   buildMediaDownloadFilename,
   shouldShowMediaDownload,
 } from '@/utils/library/domain/library.domain'
+import { cn } from '@/lib/utils'
 
 const PdfViewer = lazy(() =>
   import('@/components/library/PdfViewer').then((m) => ({
     default: m.PdfViewer,
   })),
 )
+
+const DARK_SURFACE_ACTION_CLASSES =
+  'group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white'
 
 function clickDownloadAnchor(href: string, filename: string) {
   const anchor = document.createElement('a')
@@ -120,7 +126,7 @@ function MediaDownloadLink({
       rel="noopener noreferrer"
       aria-busy={isDownloading}
       onClick={onDownload}
-      className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-3 py-1.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+      className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-3 py-1.5')}
     >
       {isDownloading ? 'Downloading' : 'Download'}
       <DownloadIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
@@ -166,7 +172,7 @@ function UnembeddableVideo({ fileUrl }: { fileUrl: string }) {
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-5 py-2.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+        className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
       >
         Open original link
         <ExternalLinkIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
@@ -175,11 +181,42 @@ function UnembeddableVideo({ fileUrl }: { fileUrl: string }) {
   )
 }
 
-function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
-  if (!viewerUrl) {
-    return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Video unavailable.</p>
-    )
+function ViewerUnavailable({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center gap-4 px-6 py-8 text-center text-sm text-[#8E816D]">
+      {message}
+      <button
+        type="button"
+        onClick={onRetry}
+        className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+function UploadedVideoContent({
+  viewerUrl,
+  onRetry,
+}: {
+  viewerUrl: string | null
+  onRetry: () => void
+}) {
+  // The failure pins to the URL that produced it: a fresh URL recovers in the
+  // same render, and a byte-identical reissue recovers through the
+  // issuance-keyed remount — no intermediate stale error frame.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  const usableUrl = resolveViewerUrl(viewerUrl, failedUrl)
+  if (!usableUrl) {
+    return <ViewerUnavailable message="Video unavailable." onRetry={onRetry} />
   }
 
   return (
@@ -188,7 +225,8 @@ function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
         controls
         playsInline
         preload="metadata"
-        src={viewerUrl}
+        src={usableUrl}
+        onError={() => setFailedUrl(usableUrl)}
         className="aspect-video w-full"
       >
         Your browser does not support video playback.
@@ -201,14 +239,17 @@ function PdfContent({
   viewerUrl,
   initialPage,
   onPageChange,
+  onRetry,
 }: {
   viewerUrl: string | null
   initialPage?: number | null
   onPageChange?: (page: number) => void
+  onRetry: () => void
 }) {
-  if (!viewerUrl) {
+  const usableUrl = resolveViewerUrl(viewerUrl, null)
+  if (!usableUrl) {
     return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Document unavailable.</p>
+      <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
     )
   }
 
@@ -222,7 +263,7 @@ function PdfContent({
         }
       >
         <PdfViewer
-          url={viewerUrl}
+          url={usableUrl}
           initialPage={initialPage}
           onPageChange={onPageChange}
         />
@@ -231,19 +272,43 @@ function PdfContent({
   )
 }
 
-function OfficeContent({ viewerUrl }: { viewerUrl: string | null }) {
-  if (!viewerUrl) {
+function OfficeContent({
+  viewerUrl,
+  onRetry,
+}: {
+  viewerUrl: string | null
+  onRetry: () => void
+}) {
+  const usableUrl = resolveViewerUrl(viewerUrl, null)
+  if (!usableUrl) {
     return (
-      <p className="px-6 py-8 text-sm text-[#8E816D]">Document unavailable.</p>
+      <ViewerUnavailable message="Document unavailable." onRetry={onRetry} />
     )
   }
 
+  // Cross-origin iframe failures can't be detected, so the recovery action
+  // stays visible: retrying re-issues the signed URL, and a `key` remounts the
+  // embed — the iframe key when the URL changes, the component key when a
+  // byte-identical URL is reissued.
   return (
-    <div className="aspect-4/3 w-full">
-      <iframe
-        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewerUrl)}`}
-        className="size-full border-0"
-      />
+    <div>
+      <div className="aspect-4/3 w-full">
+        <iframe
+          key={usableUrl}
+          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(usableUrl)}`}
+          title="Document preview"
+          className="size-full border-0"
+        />
+      </div>
+      <div className="flex justify-center px-6 py-4">
+        <button
+          type="button"
+          onClick={onRetry}
+          className={cn(DARK_SURFACE_ACTION_CLASSES, 'px-5 py-2.5')}
+        >
+          Document not loading? Try again
+        </button>
+      </div>
     </div>
   )
 }
@@ -252,14 +317,18 @@ function MediaContent({
   viewModel,
   media,
   viewerUrl,
+  issuance,
   initialPage,
   onPageChange,
+  onRetry,
 }: {
   viewModel: MediaContentViewModel
   media: MediaDetailViewerProps['media']
   viewerUrl: string | null
+  issuance: number
   initialPage?: number | null
   onPageChange?: (page: number) => void
+  onRetry: () => void
 }) {
   const { kind, videoId } = viewModel
 
@@ -268,15 +337,24 @@ function MediaContent({
       <YouTubeEmbed videoId={videoId ?? ''} originalUrl={media.fileUrl} />
     ),
     'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
-    'uploaded-video': <UploadedVideoContent viewerUrl={viewerUrl} />,
+    'uploaded-video': (
+      <UploadedVideoContent
+        key={issuance}
+        viewerUrl={viewerUrl}
+        onRetry={onRetry}
+      />
+    ),
     pdf: (
       <PdfContent
         viewerUrl={viewerUrl}
         initialPage={initialPage}
         onPageChange={onPageChange}
+        onRetry={onRetry}
       />
     ),
-    office: <OfficeContent viewerUrl={viewerUrl} />,
+    office: (
+      <OfficeContent key={issuance} viewerUrl={viewerUrl} onRetry={onRetry} />
+    ),
     none: (
       <p className="px-6 py-8 text-sm text-[#8E816D]">
         This file type cannot be previewed.
@@ -293,6 +371,29 @@ export function MediaDetailViewer({
   initialPage,
   onPageChange,
 }: MediaDetailViewerProps) {
+  const router = useRouter()
+  const [issuance, setIssuance] = useState(0)
+  const issuedUrlRef = useRef(viewerUrl)
+  useEffect(() => {
+    issuedUrlRef.current = viewerUrl
+  }, [viewerUrl])
+
+  // Retry re-runs the route loader, which issues a fresh signed viewer URL
+  // (1h TTL, ADR 0002) — recovering both missing and expired URLs. A reissue
+  // that changes the URL recovers through the viewerUrl prop on its own; only
+  // a byte-identical reissue (same-second re-signing) leaves it unchanged, so
+  // the issuance bump remounts the video and Office viewers just for that case.
+  const refreshViewerUrl = useCallback(() => {
+    const failed = issuedUrlRef.current
+    void router
+      .invalidate()
+      .then(() => {
+        if (issuedUrlRef.current === failed) {
+          setIssuance((count) => count + 1)
+        }
+      })
+      .catch(() => {})
+  }, [router])
   const viewModel = buildMediaContentViewModel(media)
   const isVideo =
     viewModel.kind === 'youtube' ||
@@ -322,8 +423,10 @@ export function MediaDetailViewer({
           viewModel={viewModel}
           media={media}
           viewerUrl={viewerUrl}
+          issuance={issuance}
           initialPage={initialPage}
           onPageChange={onPageChange}
+          onRetry={refreshViewerUrl}
         />
       </div>
     </>

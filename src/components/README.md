@@ -46,6 +46,21 @@ This folder contains:
     portaled menus must not be used inside it — portals render outside the
     native-fullscreen element. Gestures (tap-to-toggle chrome in fullscreen,
     swipe page-turns at zoom 1) are classified in `pdf-viewer.gesture.domain.ts`.
+    Document loads go through `pdf-document.domain.ts`: a cancelled/superseded
+    PDF.js task must never write state for the current URL, and the storage
+    object path (`resolvePdfDocumentKey`) — not the signed URL — identifies the
+    document, so a retry preserves the reader's page, zoom, and scroll position.
+    The reader surface stays mounted through load errors so fullscreen
+    (native and fallback) survives retries; a preserved page is clamped to the
+    reloaded document length. Signed-URL viewers recover via
+    `resolveViewerUrl` + a loader re-run that reissues the URL (1h TTL,
+    ADR 0002): PDF/video surface Try again on detected failures, while Office
+    shows a persistent "Document not loading?" action because cross-origin
+    iframe failures are undetectable. Retrying loads only the freshly issued
+    URL — never the stale one — and when the reissue is byte-identical
+    (same-second re-signing) an issuance counter re-arms the PDF load effect
+    and remounts the video/Office viewers (`key`), so the fresh issuance
+    still drives the load.
 
 ## Key Invariants / Assumptions
 

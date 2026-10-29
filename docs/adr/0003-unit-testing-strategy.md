@@ -1,6 +1,6 @@
 # ADR 0003 — Unit Testing Strategy
 
-**Status:** Accepted  
+**Status:** Accepted — expanded by [ADR 0026](./0026-jsdom-tests-for-hooks-and-components.md) for hook and component tests  
 **Date:** 2026-05-17
 
 ## Context
@@ -24,8 +24,13 @@ Domain services hold the business rules (grade calculation, assignment validity 
 
 ## What is NOT tested here
 
-- React hooks (`src/hooks/`) — require jsdom + React testing library setup
-- UI components (`src/components/`) — integration-level concerns
+> Hooks and components are no longer categorically excluded — co-located jsdom
+> tests cover behavioral invariants a domain test cannot express
+> ([ADR 0026](./0026-jsdom-tests-for-hooks-and-components.md)). The
+> server-function and DB-touching exclusions still stand.
+
+- React hooks (`src/hooks/`) — require jsdom + React testing library setup (now covered per ADR 0026)
+- UI components (`src/components/`) — integration-level concerns (see ADR 0026 for the jsdom exception)
 - Server functions (`src/utils/`) — thin adapters over domain logic; covered implicitly
 - DB-touching functions — require a real database; belong in integration tests
 
@@ -33,4 +38,4 @@ Domain services hold the business rules (grade calculation, assignment validity 
 
 - Every new function added to `src/domain/` must include tests to pass coverage
 - `bun run test:coverage` enforces the 100% threshold and will fail CI if coverage drops
-- Future expansion (hooks, components) requires a separate ADR updating scope
+- Hook and component expansion landed in [ADR 0026](./0026-jsdom-tests-for-hooks-and-components.md); further scope expansion requires a separate ADR updating scope

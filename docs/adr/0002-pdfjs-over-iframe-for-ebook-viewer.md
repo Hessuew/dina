@@ -33,5 +33,5 @@ PPTX and DOCX files (teacher presentations, not eBooks) use Microsoft Office Onl
 - `pdfjs-dist` lazy chunk (~500 KB) loads only when navigating to a document detail page.
 - Import the **legacy** build (`pdfjs-dist/legacy/build/pdf.mjs` + matching worker). Modern builds call `Promise.withResolvers()`, which throws on pre-Baseline-2024 browsers (e.g. Safari &lt; 17.4); legacy polyfills it (Sentry DINA-Z).
 - The PDF.js worker file (`pdf.worker.min.mjs`) is served as a Vite static asset via the `?url` import pattern.
-- Signed URL expiry means the viewer breaks after 1 hour without a page reload (acceptable — reload refreshes the URL).
+- Signed URL expiry means the viewer breaks after 1 hour until the URL is refreshed (acceptable — a page reload or the viewer's in-app Try again re-runs the loader and reissues it).
 - YouTube videos on the library detail page are now embedded inline rather than opening in a new tab.

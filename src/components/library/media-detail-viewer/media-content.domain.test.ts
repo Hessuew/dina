@@ -4,6 +4,7 @@ import {
   buildMediaContentViewModel,
   downloadFileOrOpenTab,
   getFileExtension,
+  resolveViewerUrl,
 } from './media-content.domain'
 import type { MediaDownloadIo, MediaDownloadTab } from './media-content.domain'
 
@@ -89,6 +90,33 @@ describe('buildMediaContentViewModel', () => {
     })
     expect(vm.kind).toBe('none')
     expect(vm.videoId).toBeNull()
+  })
+})
+
+describe('resolveViewerUrl', () => {
+  it('returns the signed viewer URL when it has not failed', () => {
+    expect(resolveViewerUrl('https://signed/doc.pdf', null)).toBe(
+      'https://signed/doc.pdf',
+    )
+  })
+
+  it('returns no usable URL when the signed viewer URL is missing', () => {
+    expect(resolveViewerUrl(null, null)).toBeNull()
+  })
+
+  it('keeps the failed URL unusable after a load failure', () => {
+    expect(
+      resolveViewerUrl('https://signed/vid.mp4', 'https://signed/vid.mp4'),
+    ).toBeNull()
+  })
+
+  it('recovers immediately once a fresh URL arrives', () => {
+    expect(
+      resolveViewerUrl(
+        'https://signed/vid.mp4?token=BBB',
+        'https://signed/vid.mp4?token=AAA',
+      ),
+    ).toBe('https://signed/vid.mp4?token=BBB')
   })
 })
 
