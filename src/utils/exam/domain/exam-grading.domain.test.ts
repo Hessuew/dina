@@ -3,6 +3,8 @@ import {
   allOpenAnswersGraded,
   autoGradeMultipleChoice,
   computeAttemptScores,
+  hasScoreRelevantEdits,
+  rescoreCompletedAttempt,
 } from './exam-grading.domain'
 import type { ExamQuestionType } from './exam-lifecycle.domain'
 
@@ -81,7 +83,10 @@ describe('computeAttemptScores', () => {
   })
 
   it('counts unanswered and ungraded questions as zero', () => {
-    const scores = computeAttemptScores([answer('a1', 'q1', 'o1', null)], questions)
+    const scores = computeAttemptScores(
+      [answer('a1', 'q1', 'o1', null)],
+      questions,
+    )
     expect(scores).toEqual({
       autoScore: 0,
       manualScore: 0,
@@ -91,11 +96,181 @@ describe('computeAttemptScores', () => {
   })
 })
 
+describe('rescoreCompletedAttempt', () => {
+  const flippedOptions = [
+    { id: 'o1', questionId: 'q1', isCorrect: false },
+    { id: 'o2', questionId: 'q1', isCorrect: true },
+    { id: 'o3', questionId: 'q2', isCorrect: false },
+    { id: 'o4', questionId: 'q2', isCorrect: true },
+  ]
+
+  it('submitted attempts persist only the recomputed autoScore', () => {
+    const rescored = rescoreCompletedAttempt(
+      'submitted',
+      [
+        answer('a1', 'q1', 'o1', 2),
+        answer('a2', 'q2', 'o4', 1),
+        answer('a3', 'q3', null, null),
+      ],
+      questions,
+      flippedOptions,
+    )
+
+    expect(rescored.autoScore).toBe(1)
+    expect(rescored).not.toHaveProperty('manualScore')
+    expect(rescored).not.toHaveProperty('totalScore')
+    expect(rescored.answerUpdates).toEqual([
+      { answerId: 'a1', isCorrect: false, awardedPoints: 0 },
+      { answerId: 'a2', isCorrect: true, awardedPoints: 1 },
+    ])
+  })
+
+  it('graded attempts recompute total keeping manual open-answer points', () => {
+    const rescored = rescoreCompletedAttempt(
+      'graded',
+      [answer('a1', 'q1', 'o2', 0), answer('a3', 'q3', null, 4)],
+      questions,
+      flippedOptions,
+    )
+
+    expect(rescored).toMatchObject({
+      autoScore: 2,
+      manualScore: 4,
+      totalScore: 6,
+    })
+  })
+
+  it('keeps open-answer awardedPoints untouched and ignores non-question answers', () => {
+    const rescored = rescoreCompletedAttempt(
+      'graded',
+      [answer('a1', 'q3', null, 3), answer('a9', 'gone', 'o1', 1)],
+      questions,
+      options,
+    )
+
+    expect(rescored).toMatchObject({
+      autoScore: 0,
+      manualScore: 3,
+      totalScore: 3,
+    })
+    expect(rescored.answerUpdates).toEqual([])
+  })
+
+  it('scores zero for an attempt with no answers', () => {
+    const rescored = rescoreCompletedAttempt(
+      'submitted',
+      [],
+      questions,
+      options,
+    )
+
+    expect(rescored.autoScore).toBe(0)
+    expect(rescored.answerUpdates).toEqual([])
+  })
+})
+
+describe('hasScoreRelevantEdits', () => {
+  const unchangedEdit = {
+    questions: [
+      {
+        questionId: 'q1',
+        type: 'multiple_choice' as ExamQuestionType,
+        points: 2,
+        options: [
+          { id: 'o1', isCorrect: true },
+          { id: 'o2', isCorrect: false },
+        ],
+      },
+      {
+        questionId: 'q3',
+        type: 'open_ended' as ExamQuestionType,
+        points: 5,
+        options: [],
+      },
+    ],
+    deletedQuestionIds: [],
+    existingQuestions: questions,
+    existingOptions: options,
+  }
+
+  it('is false when only prompts, labels, and order change', () => {
+    expect(hasScoreRelevantEdits(unchangedEdit)).toBe(false)
+  })
+
+  it('is true when the correct option set changes', () => {
+    const edit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          options: [
+            { id: 'o1', isCorrect: false },
+            { id: 'o2', isCorrect: true },
+          ],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(edit)).toBe(true)
+  })
+
+  it('is true when a kept option is marked correct alongside a new one', () => {
+    const edit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          options: [
+            { id: 'o1', isCorrect: true },
+            { id: 'o2', isCorrect: false },
+            { isCorrect: true },
+          ],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(edit)).toBe(true)
+  })
+
+  it('is true when points or type change on a kept question', () => {
+    const pointsEdit = {
+      ...unchangedEdit,
+      questions: [{ ...unchangedEdit.questions[0], points: 3 }],
+    }
+    expect(hasScoreRelevantEdits(pointsEdit)).toBe(true)
+    const typeEdit = {
+      ...unchangedEdit,
+      questions: [
+        {
+          ...unchangedEdit.questions[0],
+          type: 'open_ended' as ExamQuestionType,
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(typeEdit)).toBe(true)
+  })
+
+  it('is true when a question is added or deleted', () => {
+    const added = {
+      ...unchangedEdit,
+      questions: [
+        ...unchangedEdit.questions,
+        {
+          type: 'multiple_choice' as ExamQuestionType,
+          points: 1,
+          options: [{ isCorrect: true }],
+        },
+      ],
+    }
+    expect(hasScoreRelevantEdits(added)).toBe(true)
+    const deleted = { ...unchangedEdit, deletedQuestionIds: ['q2'] }
+    expect(hasScoreRelevantEdits(deleted)).toBe(true)
+  })
+})
+
 describe('allOpenAnswersGraded', () => {
   it('is true when every answered open question has points', () => {
-    expect(
-      allOpenAnswersGraded([answer('a3', 'q3', null, 3)], questions),
-    ).toBe(true)
+    expect(allOpenAnswersGraded([answer('a3', 'q3', null, 3)], questions)).toBe(
+      true,
+    )
   })
 
   it('is true when the open question was never answered', () => {

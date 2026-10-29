@@ -20,6 +20,17 @@ export async function findExamQuestionsByExamId(
     .orderBy(asc(examQuestions.orderIndex))
 }
 
+export async function findExamQuestionsByExamIdInTransaction(
+  tx: RepositoryTransactionClient,
+  examId: string,
+): Promise<Array<ExamQuestionRow>> {
+  return tx
+    .select()
+    .from(examQuestions)
+    .where(eq(examQuestions.examId, examId))
+    .orderBy(asc(examQuestions.orderIndex))
+}
+
 export async function findExistingExamQuestionIdsInTransaction(
   tx: RepositoryTransactionClient,
   examId: string,

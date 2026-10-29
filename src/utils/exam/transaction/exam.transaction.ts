@@ -1,17 +1,33 @@
 import type {
+  ExamAnswerRow,
   ExamQuestionOptionInput,
+  ExamQuestionOptionRow,
   ExamQuestionRow,
   RepositoryTransactionClient,
 } from '@/utils/repository'
 import { getDb } from '@/db'
 import {
   deleteExamQuestionsInTransaction,
+  findCompletedAttemptsByExamInTransaction,
+  findExamAnswerOptionSelectionsInTransaction,
+  findExamAnswerStatsByQuestionIdsInTransaction,
+  findExamAnswersByAttemptIdsInTransaction,
+  findExamQuestionOptionsByQuestionIdsInTransaction,
+  findExamQuestionsByExamIdInTransaction,
   findExistingExamQuestionIdsInTransaction,
   insertExamQuestionInTransaction,
+  lockExamInTransaction,
   replaceExamQuestionOptionsInTransaction,
+  updateExamAnswerAutoGradesInTransaction,
+  updateExamAttemptScoresInTransaction,
   updateExamInTransaction,
   updateExamQuestionInTransaction,
 } from '@/utils/repository'
+import {
+  hasScoreRelevantEdits,
+  rescoreCompletedAttempt,
+} from '@/utils/exam/domain/exam-grading.domain'
+import { questionStructureErrors } from '@/utils/exam/domain/exam-lifecycle.domain'
 
 /* v8 ignore start */
 type ExamChangesQuestion = {
@@ -117,14 +133,248 @@ async function saveQuestionsInTransaction(
   }
 }
 
+/**
+ * Every option id sent under a question must reference one of that
+ * question's existing options — a dangling id updates nothing while the
+ * question's real options are deleted (leaving it malformed), and a foreign
+ * id would overwrite another question's option row. Options on new questions
+ * carry no ids; their rows do not exist yet.
+ */
+function findMissingOptionId(
+  questions: Array<ExamChangesQuestion>,
+  existingOptions: Array<ExamQuestionOptionRow>,
+): string | undefined {
+  const existingIdsByQuestion = new Map<string, Set<string>>()
+  for (const option of existingOptions) {
+    const ids = existingIdsByQuestion.get(option.questionId) ?? new Set()
+    ids.add(option.id)
+    existingIdsByQuestion.set(option.questionId, ids)
+  }
+  for (const question of questions) {
+    const validIds = question.questionId
+      ? existingIdsByQuestion.get(question.questionId)
+      : undefined
+    for (const option of question.options) {
+      if (option.id && !validIds?.has(option.id)) return option.id
+    }
+  }
+  return undefined
+}
+
+/**
+ * Option ids of kept questions the edit would delete. The
+ * `exam_answers.selected_option_id` FK is `ON DELETE SET NULL`, so deleting
+ * a referenced option would silently erase the submitted response.
+ */
+function computeRemovedOptionIds(
+  questions: Array<ExamChangesQuestion>,
+  existingOptions: Array<ExamQuestionOptionRow>,
+): Array<string> {
+  const existingIdsByQuestion = new Map<string, Array<string>>()
+  for (const option of existingOptions) {
+    const list = existingIdsByQuestion.get(option.questionId) ?? []
+    list.push(option.id)
+    existingIdsByQuestion.set(option.questionId, list)
+  }
+  return questions.flatMap((question) => {
+    if (!question.questionId) return []
+    const keepIds = new Set(
+      question.options.flatMap((option) => (option.id ? [option.id] : [])),
+    )
+    return (existingIdsByQuestion.get(question.questionId) ?? []).filter(
+      (optionId) => !keepIds.has(optionId),
+    )
+  })
+}
+
+/**
+ * Preservation guards that keep submitted answers intact through an
+ * authoring edit. A deleted question cascade-deletes its answers, a retyped
+ * question reclassifies them, and a points reduction below a carried-over
+ * manual award would leave totals above the question maximum — all rejected
+ * before any write. Multiple-choice points may still drop: the rescore
+ * recomputes those awards against the new maximum anyway.
+ */
+function findAnsweredEditViolation(
+  data: SaveExamChangesData,
+  existingById: Map<string, ExamQuestionRow>,
+  statsByQuestion: Map<
+    string,
+    { answerCount: number; maxAwardedPoints: number }
+  >,
+):
+  | { answeredQuestionIds: Array<string> }
+  | { retypedAnsweredQuestionIds: Array<string> }
+  | { pointsBelowAwardedQuestionIds: Array<string> }
+  | undefined {
+  const hasAnswers = (questionId: string) =>
+    (statsByQuestion.get(questionId)?.answerCount ?? 0) > 0
+  const answeredQuestionIds = data.deletedQuestionIds.filter(hasAnswers)
+  if (answeredQuestionIds.length > 0) return { answeredQuestionIds }
+  const retypedAnsweredQuestionIds = data.questions.flatMap((question) =>
+    question.questionId &&
+    hasAnswers(question.questionId) &&
+    existingById.get(question.questionId)?.type !== question.type
+      ? [question.questionId]
+      : [],
+  )
+  if (retypedAnsweredQuestionIds.length > 0) {
+    return { retypedAnsweredQuestionIds }
+  }
+  const pointsBelowAwardedQuestionIds = data.questions.flatMap((question) => {
+    const existing = question.questionId
+      ? existingById.get(question.questionId)
+      : undefined
+    return existing &&
+      existing.type === 'open_ended' &&
+      question.points < existing.points &&
+      question.points <
+        (statsByQuestion.get(existing.id)?.maxAwardedPoints ?? 0)
+      ? [existing.id]
+      : []
+  })
+  if (pointsBelowAwardedQuestionIds.length > 0) {
+    return { pointsBelowAwardedQuestionIds }
+  }
+  return undefined
+}
+
+/**
+ * Re-grades every completed attempt of the exam against the post-edit answer
+ * key. Submitted answers are never rewritten — only their correctness and
+ * awarded points are recomputed, and attempt scores follow the lifecycle
+ * shape (submitted: autoScore; graded: autoScore + manualScore + totalScore).
+ * Writes are chunked bulk updates so a large cohort cannot hold the
+ * transaction open. Runs inside the authoring transaction so the key change
+ * and the rescore commit or roll back together.
+ */
+async function rescoreCompletedAttemptsInTransaction(
+  tx: RepositoryTransactionClient,
+  examId: string,
+): Promise<void> {
+  const attempts = await findCompletedAttemptsByExamInTransaction(tx, examId)
+  if (attempts.length === 0) return
+  const questions = await findExamQuestionsByExamIdInTransaction(tx, examId)
+  const [options, answers] = await Promise.all([
+    findExamQuestionOptionsByQuestionIdsInTransaction(
+      tx,
+      questions.map((question) => question.id),
+    ),
+    findExamAnswersByAttemptIdsInTransaction(
+      tx,
+      attempts.map((attempt) => attempt.id),
+    ),
+  ])
+  const answersByAttempt = new Map<string, Array<ExamAnswerRow>>()
+  for (const answer of answers) {
+    const list = answersByAttempt.get(answer.attemptId) ?? []
+    list.push(answer)
+    answersByAttempt.set(answer.attemptId, list)
+  }
+  const answerUpdates: Array<{
+    answerId: string
+    isCorrect: boolean
+    awardedPoints: number
+  }> = []
+  const attemptScores: Array<{
+    attemptId: string
+    autoScore: number
+    manualScore?: number
+    totalScore?: number
+  }> = []
+  for (const attempt of attempts) {
+    const { answerUpdates: updates, ...scores } = rescoreCompletedAttempt(
+      attempt.status,
+      answersByAttempt.get(attempt.id) ?? [],
+      questions,
+      options,
+    )
+    answerUpdates.push(...updates)
+    attemptScores.push({ attemptId: attempt.id, ...scores })
+  }
+  await updateExamAnswerAutoGradesInTransaction(tx, answerUpdates)
+  await updateExamAttemptScoresInTransaction(tx, attemptScores)
+}
+
+type SaveExamChangesError = {
+  missingQuestionId?: string
+  missingOptionId?: string
+  malformedQuestionError?: string
+  referencedOptionIds?: Array<string>
+  answeredQuestionIds?: Array<string>
+  retypedAnsweredQuestionIds?: Array<string>
+  pointsBelowAwardedQuestionIds?: Array<string>
+}
+
+type ValidatedExamChanges = {
+  existingQuestions: Array<ExamQuestionRow>
+  existingOptions: Array<ExamQuestionOptionRow>
+}
+
+/**
+ * Runs every pre-write rejection check against the post-lock state and loads
+ * the existing questions/options the write phase needs. Any returned error
+ * aborts the save before a single write, so an invalid edit never persists.
+ */
+async function validateExamChangesInTransaction(
+  tx: RepositoryTransactionClient,
+  data: SaveExamChangesData,
+): Promise<SaveExamChangesError | ValidatedExamChanges> {
+  const malformedQuestionError = data.questions
+    .flatMap((question) => questionStructureErrors(question))
+    .at(0)
+  if (malformedQuestionError) return { malformedQuestionError }
+  const missingQuestionId = await findMissingQuestionId(tx, data)
+  if (missingQuestionId) return { missingQuestionId }
+  const updateIds = data.questions.flatMap((question) =>
+    question.questionId ? [question.questionId] : [],
+  )
+  const [existingQuestions, existingOptions] = await Promise.all([
+    findExamQuestionsByExamIdInTransaction(tx, data.examId),
+    findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds),
+  ])
+  const missingOptionId = findMissingOptionId(data.questions, existingOptions)
+  if (missingOptionId) return { missingOptionId }
+  const referencedOptionIds = await findExamAnswerOptionSelectionsInTransaction(
+    tx,
+    computeRemovedOptionIds(data.questions, existingOptions),
+  )
+  if (referencedOptionIds.length > 0) return { referencedOptionIds }
+  const statsByQuestion = new Map(
+    (
+      await findExamAnswerStatsByQuestionIdsInTransaction(tx, [
+        ...updateIds,
+        ...data.deletedQuestionIds,
+      ])
+    ).map((row) => [row.questionId, row]),
+  )
+  const violation = findAnsweredEditViolation(
+    data,
+    new Map(existingQuestions.map((question) => [question.id, question])),
+    statsByQuestion,
+  )
+  if (violation) return violation
+  return { existingQuestions, existingOptions }
+}
+
 /** Saves an exam and its questions/options as one atomic authoring operation. */
 export async function saveExamChanges(
   data: SaveExamChangesData,
-): Promise<{ missingQuestionId?: string }> {
+): Promise<SaveExamChangesError> {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    const missingQuestionId = await findMissingQuestionId(tx, data)
-    if (missingQuestionId) return { missingQuestionId }
+    // The exams row lock comes first: every scoring transition takes the same
+    // lock before reading the key or answers, so no concurrent submit, grade,
+    // or answer can interleave between the preservation reads and the writes.
+    await lockExamInTransaction(tx, data.examId)
+    const validated = await validateExamChangesInTransaction(tx, data)
+    if (!('existingQuestions' in validated)) return validated
+    const rescoreNeeded = hasScoreRelevantEdits({
+      questions: data.questions,
+      deletedQuestionIds: data.deletedQuestionIds,
+      existingQuestions: validated.existingQuestions,
+      existingOptions: validated.existingOptions,
+    })
     await updateExamInTransaction(tx, {
       examId: data.examId,
       title: data.title,
@@ -134,6 +384,9 @@ export async function saveExamChanges(
     })
     await deleteQuestionsInTransaction(tx, data)
     await saveQuestionsInTransaction(tx, data)
+    if (rescoreNeeded) {
+      await rescoreCompletedAttemptsInTransaction(tx, data.examId)
+    }
     return {}
   })
 }
