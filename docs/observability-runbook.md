@@ -142,6 +142,14 @@ variable; missing annotations alone never establish legacy identity. The affecte
 journeys must use approved synthetic production credentials only; never put
 real user credentials in Actions logs.
 
+If the deploy job is cancelled or times out mid-rollout, GitHub stops it
+without running the automatic rollback step, so the Worker can stay split
+between the new and previous versions. List the live percentages with
+`bunx wrangler deployments list --name christ-dina --json`, redeploy the
+recorded previous version at `100` — or finish promoting the new version when
+its stage evidence passed — and then re-run the exact-version smoke command
+above against the version now serving traffic.
+
 ## Alert response matrix
 
 ### Worker or site unavailable

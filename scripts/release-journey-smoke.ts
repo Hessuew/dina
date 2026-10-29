@@ -5,10 +5,10 @@ import {
   resolveHealthSmokeUrl,
   validateSmokeResponseOrigin,
 } from './health-smoke.domain'
+import { resolveHealthSmokeHeaders } from './health-smoke.version.domain'
 import {
   extractFirstPartyAssetUrls,
   parseJourneyPaths,
-  versionHeaders,
 } from './release-journey-smoke.domain'
 
 const origin = resolveHealthSmokeUrl(requiredEnv('PRODUCTION_ORIGIN'))
@@ -16,11 +16,12 @@ const versionId = requiredEnv('SMOKE_VERSION_ID')
 const workerName = requiredEnv('SMOKE_WORKER_NAME')
 const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
 const paths = parseJourneyPaths(requiredEnv('PRODUCTION_JOURNEY_PATHS'))
+const versionSmokeHeaders = resolveHealthSmokeHeaders(versionId, workerName)
 
 for (const path of paths) {
   const url = new URL(path, origin)
   const response = await fetchWithTimeout(url, {
-    headers: versionHeaders(workerName, versionId),
+    headers: versionSmokeHeaders,
     redirect: 'manual',
   })
   const originFailure = validateSmokeResponseOrigin(response, url)
@@ -43,7 +44,7 @@ for (const path of paths) {
   }
   for (const assetUrl of assetUrls.slice(0, 3)) {
     const assetResponse = await fetchWithTimeout(assetUrl, {
-      headers: versionHeaders(workerName, versionId),
+      headers: versionSmokeHeaders,
       redirect: 'manual',
     })
     const assetOriginFailure = validateSmokeResponseOrigin(

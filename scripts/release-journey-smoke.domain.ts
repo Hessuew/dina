@@ -1,13 +1,3 @@
-export function versionHeaders(
-  workerName: string,
-  versionId: string,
-): Record<string, string> {
-  return {
-    'Cloudflare-Workers-Version-Overrides': `${workerName}="${versionId}"`,
-    'Cloudflare-Workers-Version-Key': `dina-release-smoke-${versionId}`,
-  }
-}
-
 export function parseJourneyPaths(value: string): Array<string> {
   const paths = value
     .split(',')

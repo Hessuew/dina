@@ -90,7 +90,7 @@ jobs:
       - name: Verify immutable v* tag protection
         uses: actions/github-script@v7
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.RELEASE_TAG_RULESET_TOKEN }}
           script: |
             const {
               hasImmutableReleaseTagRuleset,
@@ -239,7 +239,7 @@ jobs:
     needs: [resolve, migrate]
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 100
+    timeout-minutes: 150
     env:
       TARGET_SHA: ${{ needs.resolve.outputs.target_sha }}
       RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
@@ -429,7 +429,6 @@ jobs:
             --var "RELEASE_SHA:$RELEASE_SHA" \
             --var "RELEASE_ORIGIN:$RELEASE_ORIGIN" \
             --var "RELEASE_SOURCE_MAPS_VERIFIED:$RELEASE_SOURCE_MAPS_VERIFIED" \
-            --var "CLOUDFLARE_ACCOUNT_ID:$CLOUDFLARE_ACCOUNT_ID" \
             --var "BETTER_STACK_APPLICATION_ID:$BETTER_STACK_APPLICATION_ID" \
             --var "RELEASE_ALERTS_SLACK_INCIDENTS:$RELEASE_ALERTS_SLACK_INCIDENTS" \
             --var "RELEASE_ALERTS_EMAIL_FALLBACK:$RELEASE_ALERTS_EMAIL_FALLBACK" \
@@ -568,7 +567,8 @@ jobs:
           PRODUCTION_RELEASE_EVIDENCE_TOKEN: ${{ secrets.PRODUCTION_RELEASE_EVIDENCE_TOKEN }}
           CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
         run: bun run scripts/release-evidence.ts
-      - name: Publish GitHub Release evidence and deployment binding
+      - id: publish
+        name: Publish GitHub Release evidence and deployment binding
         uses: actions/github-script@v7
         env:
           TARGET_SHA: ${{ env.TARGET_SHA }}
@@ -639,7 +639,10 @@ jobs:
             const prRows = [...pullRequests.values()]
               .filter((pull) => pull.merged_at)
               .sort((left, right) => left.number - right.number)
-              .map((pull) => `- #${pull.number} ${pull.title} (@${pull.user.login})`)
+              .map(
+                (pull) =>
+                  `- #${pull.number} ${pull.title} (@${pull.user?.login ?? 'unknown'})`,
+              )
             const notes = [
               `# ${process.env.RELEASE_TAG}`,
               '',
@@ -699,7 +702,12 @@ jobs:
             })
       - id: rollback
         name: Roll back the Worker after a failed smoke or guardrail
-        if: failure() && steps.upload.outputs.version_id != ''
+        if: >-
+          ${{
+            failure() &&
+            steps.upload.outputs.version_id != '' &&
+            steps.publish.outcome != 'failure'
+          }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

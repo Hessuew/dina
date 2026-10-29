@@ -7,14 +7,13 @@ describe('resolveSmokeCommand', () => {
     ['health', ['run', 'smoke:health']],
     ['journey', ['run', 'scripts/release-journey-smoke.ts']],
     ['rollback', ['run', 'scripts/rollback-and-smoke.ts']],
-    ['rollback-deploy', ['run', 'scripts/rollback-deploy.ts']],
   ])('maps %s to its smoke command', (name, command) => {
     expect(resolveSmokeCommand(name)).toEqual(command)
   })
 
   it('rejects unsupported smoke targets', () => {
     expect(() => resolveSmokeCommand('unknown')).toThrow(
-      'Smoke target must be health, journey, rollback, or rollback-deploy',
+      'Smoke target must be health, journey, or rollback',
     )
   })
 })

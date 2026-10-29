@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   collectTrustedReleaseBindings,
   isSupportedManualPromotionTarget,
+  loadTrustedReleaseBindings,
 } from './trusted-release.cjs'
 
 const commitSha = 'a'.repeat(40)
@@ -73,6 +74,67 @@ describe('collectTrustedReleaseBindings', () => {
         commitSha,
       },
     })
+  })
+})
+
+describe('loadTrustedReleaseBindings', () => {
+  it('hydrates deployment statuses and dereferences annotated release tags', async () => {
+    const tagObjectSha = 'd'.repeat(40)
+    const { statuses, ...deployment } = provenance.deployments[0]
+    const endpoints = {
+      listDeployments: vi.fn(),
+      listDeploymentStatuses: vi.fn(),
+      listReleases: vi.fn(),
+      listWorkflowRuns: vi.fn(),
+    }
+    const github = {
+      paginate: vi.fn(
+        async (
+          endpoint: unknown,
+          params: Record<string, unknown>,
+        ): Promise<Array<unknown>> => {
+          if (endpoint === endpoints.listReleases) return [release]
+          if (endpoint === endpoints.listWorkflowRuns) {
+            return params.workflow_id === 'main-release.yml'
+              ? provenance.mainGateRuns
+              : provenance.productionRuns
+          }
+          if (endpoint === endpoints.listDeployments) return [deployment]
+          if (endpoint === endpoints.listDeploymentStatuses) return statuses
+          throw new Error('unexpected endpoint')
+        },
+      ),
+      rest: {
+        actions: { listWorkflowRuns: endpoints.listWorkflowRuns },
+        git: {
+          getRef: vi.fn(async ({ ref }: { ref: string }) => {
+            expect(ref).toBe(`tags/${releaseTag}`)
+            return {
+              data: { object: { sha: tagObjectSha, type: 'tag' } },
+            }
+          }),
+          getTag: vi.fn(async ({ tag_sha }: { tag_sha: string }) => {
+            expect(tag_sha).toBe(tagObjectSha)
+            return { data: { object: { sha: commitSha, type: 'commit' } } }
+          }),
+        },
+        repos: {
+          listDeployments: endpoints.listDeployments,
+          listDeploymentStatuses: endpoints.listDeploymentStatuses,
+          listReleases: endpoints.listReleases,
+        },
+      },
+    }
+
+    const bindings = await loadTrustedReleaseBindings(github, {
+      owner: 'owner',
+      repo: 'repo',
+    })
+
+    expect(bindings).toEqual({
+      [releaseTag]: { cloudflareVersionId: 'version-1', commitSha },
+    })
+    expect(github.rest.git.getTag).toHaveBeenCalledOnce()
   })
 })
 

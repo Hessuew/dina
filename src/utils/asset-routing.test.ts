@@ -29,6 +29,36 @@ describe('fetchWithAssetFallback', () => {
     expect(fetchAssets).toHaveBeenCalledOnce()
   })
 
+  it('keeps the application 404 for routes without a file extension', async () => {
+    const applicationResponse = new Response('not found', { status: 404 })
+    const fetchAssets = vi.fn()
+
+    const response = await fetchWithAssetFallback(
+      new Request('https://christ-dina.org/login'),
+      { ASSETS: { fetch: fetchAssets } },
+      async () => applicationResponse,
+    )
+
+    expect(response).toBe(applicationResponse)
+    expect(fetchAssets).not.toHaveBeenCalled()
+  })
+
+  it('keeps the application 404 for non-GET asset requests', async () => {
+    const applicationResponse = new Response('not found', { status: 404 })
+    const fetchAssets = vi.fn()
+
+    const response = await fetchWithAssetFallback(
+      new Request('https://christ-dina.org/assets/app.js', {
+        method: 'POST',
+      }),
+      { ASSETS: { fetch: fetchAssets } },
+      async () => applicationResponse,
+    )
+
+    expect(response).toBe(applicationResponse)
+    expect(fetchAssets).not.toHaveBeenCalled()
+  })
+
   it('preserves application responses and does not require an asset binding', async () => {
     const applicationResponse = new Response('application', { status: 200 })
     const fetchApplication = vi.fn(async () => applicationResponse)

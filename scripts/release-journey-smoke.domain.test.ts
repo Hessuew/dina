@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   extractFirstPartyAssetUrls,
   parseJourneyPaths,
-  versionHeaders,
 } from './release-journey-smoke.domain'
 
 describe('release journey smoke helpers', () => {
@@ -31,12 +30,5 @@ describe('release journey smoke helpers', () => {
       'https://christ-dina.org/assets/app-abc12345.js',
       'https://christ-dina.org/assets/app-def45678.css?x=1',
     ])
-  })
-
-  it('pins journey requests to the exact Worker version', () => {
-    expect(versionHeaders('christ-dina', 'version-123')).toEqual({
-      'Cloudflare-Workers-Version-Overrides': 'christ-dina="version-123"',
-      'Cloudflare-Workers-Version-Key': 'dina-release-smoke-version-123',
-    })
   })
 })

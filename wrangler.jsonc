@@ -10,7 +10,6 @@
     "run_worker_first": true,
   },
   "vars": {
-    "RELEASE_METRICS_DATASET": "dina_release_metrics",
     "RELEASE_ALERTS_SLACK_INCIDENTS": "false",
     "RELEASE_ALERTS_EMAIL_FALLBACK": "false",
   },

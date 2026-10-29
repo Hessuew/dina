@@ -81,13 +81,14 @@ correlating the version id and tag.
 
 The Worker records request count, unexpected errors, latency, and release
 identity in the `dina_release_metrics` Workers Analytics Engine dataset. It
-does not classify ordinary HTTP 5xx responses as high-severity issues. The
-protected `/_internal/release/metrics` endpoint therefore remains non-queryable
-and returns 503 until a trusted provider adapter supplies the explicit
-release-correlated `highSeverityIssues` aggregate. The readiness variables stay
-false until that provider signal is configured and verified. The endpoint
-requires a release-version match plus a bearer token and is excluded from its
-own dataset.
+does not classify ordinary HTTP 5xx responses as high-severity issues, so
+`CLOUDFLARE_VERSION_METRICS_URL` must point at an external provider adapter
+that supplies the explicit release-correlated `highSeverityIssues` aggregate.
+The protected `/_internal/release/metrics` endpoint is not that adapter: it
+stays non-queryable and returns 503 until a provider severity signal is wired
+in. The readiness variables stay false until that provider signal is
+configured and verified. The endpoint requires a release-version match plus a
+bearer token and is excluded from its own dataset.
 
 After promotion, `bun run scripts/release-evidence.ts` queries the protected
 `PRODUCTION_RELEASE_EVIDENCE_URL` adapter. It must confirm the exact release

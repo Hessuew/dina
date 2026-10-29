@@ -11,8 +11,6 @@ const metadata = {
 
 const runtime: ReleaseRuntimeEnv = {
   RELEASE_METRICS_TOKEN: 'secret',
-  CLOUDFLARE_ACCOUNT_ID: 'account',
-  CLOUDFLARE_ANALYTICS_TOKEN: 'analytics',
 }
 
 describe('release metrics endpoint', () => {
@@ -21,18 +19,9 @@ describe('release metrics endpoint', () => {
     vi.unstubAllGlobals()
   })
 
-  it('fails closed when the provider high-severity signal is unavailable', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              data: [{ requests: 1, errors: 0, p95LatencyMs: 10 }],
-            }),
-          ),
-      ),
-    )
+  it('stays non-queryable until an external severity adapter supplies metrics', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
 
     const response = await handleReleaseEndpoint(
       new Request(
@@ -44,46 +33,7 @@ describe('release metrics endpoint', () => {
     )
 
     expect(response?.status).toBe(503)
-  })
-
-  it('echoes the normalized metrics window with queryable metrics', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              data: [
-                {
-                  requests: 20,
-                  errors: 0,
-                  p95LatencyMs: 10,
-                  highSeverityIssues: 0,
-                },
-              ],
-            }),
-          ),
-      ),
-    )
-
-    const response = await handleReleaseEndpoint(
-      new Request(
-        'https://example.test/_internal/release/metrics?version_id=version-1&since=2026-09-30T12:34:56.000Z&until=2026-09-30T12:39:56.000Z',
-        { headers: { authorization: 'Bearer secret' } },
-      ),
-      runtime,
-      metadata,
-    )
-
-    expect(response?.status).toBe(200)
-    await expect(response?.json()).resolves.toEqual({
-      requests: 20,
-      errors: 0,
-      p95LatencyMs: 10,
-      highSeverityIssues: 0,
-      since: '2026-09-30T12:34:56.000Z',
-      until: '2026-09-30T12:39:56.000Z',
-    })
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('records an ordinary 5xx only in the error-rate metric', () => {

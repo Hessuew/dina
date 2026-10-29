@@ -1,6 +1,5 @@
 const METRICS_PATH = '/_internal/release/metrics'
 const EVIDENCE_PATH = '/_internal/release/evidence'
-const DATASET_NAME = 'dina_release_metrics'
 
 export type ReleaseVersionMetadata = {
   id: string
@@ -20,14 +19,11 @@ export type ReleaseRuntimeEnv = {
   RELEASE_METRICS?: MetricsDataset
   RELEASE_METRICS_TOKEN?: string
   RELEASE_EVIDENCE_TOKEN?: string
-  RELEASE_METRICS_DATASET?: string
   RELEASE_SHA?: string
   RELEASE_ORIGIN?: string
   RELEASE_SOURCE_MAPS_VERIFIED?: string
   RELEASE_ALERTS_SLACK_INCIDENTS?: string
   RELEASE_ALERTS_EMAIL_FALLBACK?: string
-  CLOUDFLARE_ACCOUNT_ID?: string
-  CLOUDFLARE_ANALYTICS_TOKEN?: string
   BETTER_STACK_TELEMETRY_TOKEN?: string
   BETTER_STACK_APPLICATION_ID?: string
 }
@@ -36,13 +32,6 @@ type MetricsWindow = {
   versionId: string
   since: string
   until: string
-}
-
-type ReleaseMetrics = {
-  requests: number
-  errors: number
-  p95LatencyMs: number
-  highSeverityIssues: number
 }
 
 export async function handleReleaseEndpoint(
@@ -94,21 +83,14 @@ function shouldRecordMetric(
   )
 }
 
-async function handleMetricsRequest(
+function handleMetricsRequest(
   request: Request,
   runtime: ReleaseRuntimeEnv,
   metadata: ReleaseVersionMetadata | null,
-): Promise<Response> {
-  const window = resolveMetricsRequest(request, runtime, metadata)
-  if (window instanceof Response) return window
-
-  const metrics = await queryReleaseMetrics(runtime, window)
-  return metrics
-    ? jsonResponse(
-        { ...metrics, since: window.since, until: window.until },
-        200,
-      )
-    : jsonResponse({ error: 'metrics are not queryable' }, 503)
+): Response {
+  const resolved = resolveMetricsRequest(request, runtime, metadata)
+  if (resolved instanceof Response) return resolved
+  return jsonResponse({ error: 'metrics are not queryable' }, 503)
 }
 
 // fallow-ignore-next-line complexity -- each fail-closed response is a distinct adapter guard
@@ -246,93 +228,6 @@ function readIsoTimestamp(value: string | null): string | null {
   return Number.isNaN(timestamp.valueOf()) ? null : timestamp.toISOString()
 }
 
-async function queryReleaseMetrics(
-  runtime: ReleaseRuntimeEnv,
-  window: MetricsWindow,
-): Promise<ReleaseMetrics | null> {
-  const credentials = resolveAnalyticsCredentials(runtime)
-  if (!credentials) return null
-
-  const dataset = runtime.RELEASE_METRICS_DATASET?.trim() || DATASET_NAME
-  const query = buildMetricsQuery(dataset, window)
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${credentials.accountId}/analytics_engine/sql`,
-    {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${credentials.token}`,
-        'content-type': 'text/plain',
-      },
-      body: query,
-    },
-  )
-  if (!response.ok) return null
-  return parseMetricsResponse(await response.json())
-}
-
-function resolveAnalyticsCredentials(
-  runtime: ReleaseRuntimeEnv,
-): { accountId: string; token: string } | null {
-  const accountId = runtime.CLOUDFLARE_ACCOUNT_ID?.trim()
-  const token = runtime.CLOUDFLARE_ANALYTICS_TOKEN?.trim()
-  return accountId && token ? { accountId, token } : null
-}
-
-function buildMetricsQuery(dataset: string, window: MetricsWindow): string {
-  const safeDataset = /^[A-Za-z0-9_]+$/u.test(dataset) ? dataset : DATASET_NAME
-  const version = escapeSql(window.versionId)
-  const since = formatAnalyticsTimestamp(window.since)
-  const until = formatAnalyticsTimestamp(window.until)
-  return [
-    'SELECT',
-    'SUM(_sample_interval * double1) AS requests,',
-    'SUM(_sample_interval * double2) AS errors,',
-    'quantileExactWeighted(0.95)(double3, _sample_interval) AS p95LatencyMs',
-    `FROM ${safeDataset}`,
-    `WHERE index1 = '${version}'`,
-    `AND timestamp >= toDateTime('${since}')`,
-    `AND timestamp < toDateTime('${until}')`,
-    'FORMAT JSON',
-  ].join(' ')
-}
-
-function formatAnalyticsTimestamp(value: string): string {
-  return value.slice(0, 19).replace('T', ' ')
-}
-
-function parseMetricsResponse(value: unknown): ReleaseMetrics | null {
-  const row = firstMetricsRow(value)
-  if (!row) return null
-  const requests = readMetric(row.requests)
-  const errors = readMetric(row.errors)
-  const p95LatencyMs = readMetric(row.p95LatencyMs)
-  const highSeverityIssues = readMetric(row.highSeverityIssues)
-  if (
-    requests === null ||
-    errors === null ||
-    p95LatencyMs === null ||
-    highSeverityIssues === null
-  ) {
-    return null
-  }
-  return { requests, errors, p95LatencyMs, highSeverityIssues }
-}
-
-function firstMetricsRow(value: unknown): Record<string, unknown> | null {
-  if (!isRecord(value) || !Array.isArray(value.data)) return null
-  const row = value.data[0]
-  return isRecord(row) ? row : null
-}
-
-function readMetric(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-  if (typeof value !== 'string' || !value.trim()) return null
-  const metric = Number(value)
-  return Number.isFinite(metric) ? metric : null
-}
-
 async function hasReportedBetterStackRelease(
   runtime: ReleaseRuntimeEnv,
   releaseTag: string,
@@ -380,10 +275,6 @@ function matchesReportedRelease(
     environments.includes('production') &&
     attributes.origin === 'reported',
   )
-}
-
-function escapeSql(value: string): string {
-  return value.replaceAll("'", "''")
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
