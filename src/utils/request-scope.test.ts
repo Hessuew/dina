@@ -1,24 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const findProfile = vi.fn()
+const findProfileRoleById = vi.hoisted(() => vi.fn())
+
+vi.mock('@/utils/repository', () => ({
+  findProfileRoleById,
+}))
 
 vi.mock('@/db', () => ({
-  getDb: vi.fn(async () => ({
-    query: { profiles: { findFirst: findProfile } },
-  })),
   withDbConnection: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
 }))
 
-import { DefaultAuthorizationService } from './authz/default-adapter'
-import { withRequestScope } from './request-scope'
-
 describe('withRequestScope', () => {
   beforeEach(() => {
-    findProfile.mockReset()
+    vi.resetModules()
+    findProfileRoleById.mockReset()
   })
 
   it('caches repeated role checks without a service-level wrapper', async () => {
-    findProfile.mockResolvedValue({ role: 'admin' })
+    findProfileRoleById.mockResolvedValue({ role: 'admin' })
+    const { DefaultAuthorizationService } = await import(
+      './authz/default-adapter'
+    )
+    const { withRequestScope } = await import('./request-scope')
     const service = new DefaultAuthorizationService()
 
     await withRequestScope(async () => {
@@ -26,6 +29,6 @@ describe('withRequestScope', () => {
       expect(await service.isRole('user-1', 'admin')).toBe(true)
     })
 
-    expect(findProfile).toHaveBeenCalledTimes(1)
+    expect(findProfileRoleById).toHaveBeenCalledTimes(1)
   })
 })
