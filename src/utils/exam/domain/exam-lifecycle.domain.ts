@@ -71,9 +71,7 @@ export function questionStructureErrors(question: {
     }
     return errors
   }
-  return options.length > 0
-    ? ['Open-ended questions cannot have options']
-    : []
+  return options.length > 0 ? ['Open-ended questions cannot have options'] : []
 }
 
 /**

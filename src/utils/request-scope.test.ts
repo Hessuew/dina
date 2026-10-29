@@ -18,9 +18,8 @@ describe('withRequestScope', () => {
 
   it('caches repeated role checks without a service-level wrapper', async () => {
     findProfileRoleById.mockResolvedValue({ role: 'admin' })
-    const { DefaultAuthorizationService } = await import(
-      './authz/default-adapter'
-    )
+    const { DefaultAuthorizationService } =
+      await import('./authz/default-adapter')
     const { withRequestScope } = await import('./request-scope')
     const service = new DefaultAuthorizationService()
 

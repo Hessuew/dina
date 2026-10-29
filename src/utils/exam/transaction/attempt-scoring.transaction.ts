@@ -102,19 +102,63 @@ export type SaveAnswerOutcome =
   | { kind: 'invalid_shape'; message: string }
   | { kind: 'foreign_option' }
 
+type SaveAnswerInput = {
+  examId: string
+  attemptId: string
+  questionId: string
+  selectedOptionId?: string
+  textAnswer?: string
+}
+
+type SaveAnswerValidation =
+  | { kind: 'valid'; question: ExamQuestionRow }
+  | { kind: 'missing_question' }
+  | { kind: 'invalid_shape'; message: string }
+  | { kind: 'foreign_option' }
+
+/**
+ * Resolves the target question under the lock and rejects saves whose
+ * payload cannot belong to it — a missing question, a malformed answer
+ * shape, or an option owned by another question.
+ */
+async function validateSavedAnswer(
+  tx: RepositoryTransactionClient,
+  input: SaveAnswerInput,
+): Promise<SaveAnswerValidation> {
+  const questions = await findExamQuestionsByExamIdInTransaction(
+    tx,
+    input.examId,
+  )
+  const question = questions.find(
+    (candidate) => candidate.id === input.questionId,
+  )
+  if (!question) return { kind: 'missing_question' }
+  const shapeError = validateAnswerShape(question.type, {
+    selectedOptionId: input.selectedOptionId,
+    textAnswer: input.textAnswer,
+  })
+  if (shapeError) return { kind: 'invalid_shape', message: shapeError }
+  if (input.selectedOptionId !== undefined) {
+    const options = await findExamQuestionOptionsByQuestionIdsInTransaction(
+      tx,
+      [question.id],
+    )
+    if (!isOptionOfQuestion(input.selectedOptionId, question.id, options)) {
+      return { kind: 'foreign_option' }
+    }
+  }
+  return { kind: 'valid', question }
+}
+
 /**
  * Persists one autosaved answer under the exam lock, so the upsert can never
  * land between the authoring guard's reference read and its option delete.
  * Question shape, option membership, and the save window are validated
  * against the post-lock state and timestamp.
  */
-export async function saveAnswerScoring(input: {
-  examId: string
-  attemptId: string
-  questionId: string
-  selectedOptionId?: string
-  textAnswer?: string
-}): Promise<SaveAnswerOutcome> {
+export async function saveAnswerScoring(
+  input: SaveAnswerInput,
+): Promise<SaveAnswerOutcome> {
   return withExamScoringLock(input.examId, async (tx) => {
     const attempt = await findAttemptByIdInTransaction(tx, input.attemptId)
     if (!attempt || attempt.status !== 'in_progress') {
@@ -124,35 +168,15 @@ export async function saveAnswerScoring(input: {
     if (!isSaveAllowed(now, attempt.deadlineAt)) {
       return { kind: 'expired' }
     }
-    const questions = await findExamQuestionsByExamIdInTransaction(
-      tx,
-      input.examId,
-    )
-    const question = questions.find(
-      (candidate) => candidate.id === input.questionId,
-    )
-    if (!question) return { kind: 'missing_question' }
-    const shapeError = validateAnswerShape(question.type, {
-      selectedOptionId: input.selectedOptionId,
-      textAnswer: input.textAnswer,
-    })
-    if (shapeError) return { kind: 'invalid_shape', message: shapeError }
-    if (input.selectedOptionId !== undefined) {
-      const options = await findExamQuestionOptionsByQuestionIdsInTransaction(
-        tx,
-        [question.id],
-      )
-      if (!isOptionOfQuestion(input.selectedOptionId, question.id, options)) {
-        return { kind: 'foreign_option' }
-      }
-    }
+    const validation = await validateSavedAnswer(tx, input)
+    if (validation.kind !== 'valid') return validation
     const answer = await upsertExamAnswerInTransaction(tx, {
       attemptId: input.attemptId,
-      questionId: question.id,
+      questionId: validation.question.id,
       selectedOptionId: input.selectedOptionId ?? null,
       textAnswer: input.textAnswer ?? null,
     })
-    return { kind: 'saved', answer, question, now }
+    return { kind: 'saved', answer, question: validation.question, now }
   })
 }
 

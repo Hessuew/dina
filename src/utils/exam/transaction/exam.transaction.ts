@@ -296,8 +296,7 @@ async function rescoreCompletedAttemptsInTransaction(
   await updateExamAttemptScoresInTransaction(tx, attemptScores)
 }
 
-/** Saves an exam and its questions/options as one atomic authoring operation. */
-export async function saveExamChanges(data: SaveExamChangesData): Promise<{
+type SaveExamChangesError = {
   missingQuestionId?: string
   missingOptionId?: string
   malformedQuestionError?: string
@@ -305,53 +304,76 @@ export async function saveExamChanges(data: SaveExamChangesData): Promise<{
   answeredQuestionIds?: Array<string>
   retypedAnsweredQuestionIds?: Array<string>
   pointsBelowAwardedQuestionIds?: Array<string>
-}> {
+}
+
+type ValidatedExamChanges = {
+  existingQuestions: Array<ExamQuestionRow>
+  existingOptions: Array<ExamQuestionOptionRow>
+}
+
+/**
+ * Runs every pre-write rejection check against the post-lock state and loads
+ * the existing questions/options the write phase needs. Any returned error
+ * aborts the save before a single write, so an invalid edit never persists.
+ */
+async function validateExamChangesInTransaction(
+  tx: RepositoryTransactionClient,
+  data: SaveExamChangesData,
+): Promise<SaveExamChangesError | ValidatedExamChanges> {
+  const malformedQuestionError = data.questions
+    .flatMap((question) => questionStructureErrors(question))
+    .at(0)
+  if (malformedQuestionError) return { malformedQuestionError }
+  const missingQuestionId = await findMissingQuestionId(tx, data)
+  if (missingQuestionId) return { missingQuestionId }
+  const updateIds = data.questions.flatMap((question) =>
+    question.questionId ? [question.questionId] : [],
+  )
+  const [existingQuestions, existingOptions] = await Promise.all([
+    findExamQuestionsByExamIdInTransaction(tx, data.examId),
+    findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds),
+  ])
+  const missingOptionId = findMissingOptionId(data.questions, existingOptions)
+  if (missingOptionId) return { missingOptionId }
+  const referencedOptionIds = await findExamAnswerOptionSelectionsInTransaction(
+    tx,
+    computeRemovedOptionIds(data.questions, existingOptions),
+  )
+  if (referencedOptionIds.length > 0) return { referencedOptionIds }
+  const statsByQuestion = new Map(
+    (
+      await findExamAnswerStatsByQuestionIdsInTransaction(tx, [
+        ...updateIds,
+        ...data.deletedQuestionIds,
+      ])
+    ).map((row) => [row.questionId, row]),
+  )
+  const violation = findAnsweredEditViolation(
+    data,
+    new Map(existingQuestions.map((question) => [question.id, question])),
+    statsByQuestion,
+  )
+  if (violation) return violation
+  return { existingQuestions, existingOptions }
+}
+
+/** Saves an exam and its questions/options as one atomic authoring operation. */
+export async function saveExamChanges(
+  data: SaveExamChangesData,
+): Promise<SaveExamChangesError> {
   const db = await getDb()
   return db.transaction(async (tx) => {
     // The exams row lock comes first: every scoring transition takes the same
     // lock before reading the key or answers, so no concurrent submit, grade,
     // or answer can interleave between the preservation reads and the writes.
     await lockExamInTransaction(tx, data.examId)
-    const malformedQuestionError = data.questions
-      .flatMap((question) => questionStructureErrors(question))
-      .at(0)
-    if (malformedQuestionError) return { malformedQuestionError }
-    const missingQuestionId = await findMissingQuestionId(tx, data)
-    if (missingQuestionId) return { missingQuestionId }
-    const updateIds = data.questions.flatMap((question) =>
-      question.questionId ? [question.questionId] : [],
-    )
-    const [existingQuestions, existingOptions] = await Promise.all([
-      findExamQuestionsByExamIdInTransaction(tx, data.examId),
-      findExamQuestionOptionsByQuestionIdsInTransaction(tx, updateIds),
-    ])
-    const missingOptionId = findMissingOptionId(data.questions, existingOptions)
-    if (missingOptionId) return { missingOptionId }
-    const referencedOptionIds =
-      await findExamAnswerOptionSelectionsInTransaction(
-        tx,
-        computeRemovedOptionIds(data.questions, existingOptions),
-      )
-    if (referencedOptionIds.length > 0) return { referencedOptionIds }
-    const statsByQuestion = new Map(
-      (
-        await findExamAnswerStatsByQuestionIdsInTransaction(tx, [
-          ...updateIds,
-          ...data.deletedQuestionIds,
-        ])
-      ).map((row) => [row.questionId, row]),
-    )
-    const violation = findAnsweredEditViolation(
-      data,
-      new Map(existingQuestions.map((question) => [question.id, question])),
-      statsByQuestion,
-    )
-    if (violation) return violation
+    const validated = await validateExamChangesInTransaction(tx, data)
+    if (!('existingQuestions' in validated)) return validated
     const rescoreNeeded = hasScoreRelevantEdits({
       questions: data.questions,
       deletedQuestionIds: data.deletedQuestionIds,
-      existingQuestions,
-      existingOptions,
+      existingQuestions: validated.existingQuestions,
+      existingOptions: validated.existingOptions,
     })
     await updateExamInTransaction(tx, {
       examId: data.examId,
