@@ -50,13 +50,17 @@ This folder contains:
     PDF.js task must never write state for the current URL, and the storage
     object path (`resolvePdfDocumentKey`) — not the signed URL — identifies the
     document, so a retry preserves the reader's page, zoom, and scroll position.
-    Signed-URL viewers
-    recover via `resolveViewerUrl` + a loader re-run that reissues the URL
-    (1h TTL, ADR 0002): PDF/video surface Try again on detected failures,
-    while Office shows a persistent "Document not loading?" action because
-    cross-origin iframe failures are undetectable (the iframe remounts via
-    `key` when the fresh URL arrives). Only the new URL drives reloads — no
-    duplicate fetch against a stale URL.
+    The reader surface stays mounted through load errors so fullscreen
+    (native and fallback) survives retries; a preserved page is clamped to the
+    reloaded document length. Signed-URL viewers recover via
+    `resolveViewerUrl` + a loader re-run that reissues the URL (1h TTL,
+    ADR 0002): PDF/video surface Try again on detected failures, while Office
+    shows a persistent "Document not loading?" action because cross-origin
+    iframe failures are undetectable. Retrying loads only the freshly issued
+    URL — never the stale one — and when the reissue is byte-identical
+    (same-second re-signing) an issuance counter re-arms the PDF load effect
+    and remounts the video/Office viewers (`key`), so the fresh issuance
+    still drives the load.
 
 ## Key Invariants / Assumptions
 

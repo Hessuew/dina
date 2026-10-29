@@ -18,8 +18,14 @@ export function usePdfDocument(url: string) {
   const [numPages, setNumPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [issuance, setIssuance] = useState(0)
   const docKey = resolvePdfDocumentKey(url)
   const docKeyRef = useRef(docKey)
+  const issuedUrlRef = useRef(url)
+
+  useEffect(() => {
+    issuedUrlRef.current = url
+  }, [url])
 
   useEffect(() => {
     setLoading(true)
@@ -45,6 +51,9 @@ export function usePdfDocument(url: string) {
       onLoaded: (doc) => {
         setPdf(doc)
         setNumPages(doc.numPages)
+        // A preserved page can exceed a shorter document reloaded under the
+        // same key (e.g. the storage object was replaced out-of-band).
+        setPageNum((page) => Math.min(page, doc.numPages))
         setLoading(false)
       },
       onFailed: () => {
@@ -53,13 +62,24 @@ export function usePdfDocument(url: string) {
       },
     })
     return () => load.cancel()
-  }, [url, docKey])
+  }, [url, docKey, issuance])
 
-  // Reload the route loader so a retry gets a fresh signed URL — the issued
-  // one expires after an hour (ADR 0002). The new URL drives the reload, so
-  // no request ever goes out against the stale URL.
+  // Reload the route loader so a retry always loads a freshly issued signed
+  // URL — the issued one expires after an hour (ADR 0002), so no request goes
+  // out against a stale URL. A reissue that changes the URL reloads through
+  // the effect's url dep on its own; only a byte-identical reissue
+  // (same-second re-signing) leaves the dep unchanged, so the issuance bump
+  // drives the load just for that case.
   const retry = useCallback(() => {
-    void router.invalidate()
+    const failed = issuedUrlRef.current
+    void router
+      .invalidate()
+      .then(() => {
+        if (issuedUrlRef.current === failed) {
+          setIssuance((count) => count + 1)
+        }
+      })
+      .catch(() => {})
   }, [router])
 
   return { pdf, pageNum, setPageNum, numPages, loading, error, retry, docKey }

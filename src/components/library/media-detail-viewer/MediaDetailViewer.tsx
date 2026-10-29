@@ -4,7 +4,7 @@ import {
   FileTextIcon,
   VideoIcon,
 } from 'lucide-react'
-import { Suspense, lazy, useCallback, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { YouTubeEmbed } from '../youtube-embed/YouTubeEmbed'
 import type { ReactNode } from 'react'
@@ -209,8 +209,9 @@ function UploadedVideoContent({
   viewerUrl: string | null
   onRetry: () => void
 }) {
-  // The failure pins to the URL that produced it, so a freshly issued URL
-  // recovers in the same render — no intermediate stale error frame.
+  // The failure pins to the URL that produced it: a fresh URL recovers in the
+  // same render, and a byte-identical reissue recovers through the
+  // issuance-keyed remount — no intermediate stale error frame.
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
   const usableUrl = resolveViewerUrl(viewerUrl, failedUrl)
@@ -286,8 +287,9 @@ function OfficeContent({
   }
 
   // Cross-origin iframe failures can't be detected, so the recovery action
-  // stays visible: retrying re-issues the signed URL, and keying the iframe
-  // on it remounts the embed against the fresh URL.
+  // stays visible: retrying re-issues the signed URL, and a `key` remounts the
+  // embed — the iframe key when the URL changes, the component key when a
+  // byte-identical URL is reissued.
   return (
     <div>
       <div className="aspect-4/3 w-full">
@@ -315,6 +317,7 @@ function MediaContent({
   viewModel,
   media,
   viewerUrl,
+  issuance,
   initialPage,
   onPageChange,
   onRetry,
@@ -322,6 +325,7 @@ function MediaContent({
   viewModel: MediaContentViewModel
   media: MediaDetailViewerProps['media']
   viewerUrl: string | null
+  issuance: number
   initialPage?: number | null
   onPageChange?: (page: number) => void
   onRetry: () => void
@@ -334,7 +338,11 @@ function MediaContent({
     ),
     'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
     'uploaded-video': (
-      <UploadedVideoContent viewerUrl={viewerUrl} onRetry={onRetry} />
+      <UploadedVideoContent
+        key={issuance}
+        viewerUrl={viewerUrl}
+        onRetry={onRetry}
+      />
     ),
     pdf: (
       <PdfContent
@@ -344,7 +352,9 @@ function MediaContent({
         onRetry={onRetry}
       />
     ),
-    office: <OfficeContent viewerUrl={viewerUrl} onRetry={onRetry} />,
+    office: (
+      <OfficeContent key={issuance} viewerUrl={viewerUrl} onRetry={onRetry} />
+    ),
     none: (
       <p className="px-6 py-8 text-sm text-[#8E816D]">
         This file type cannot be previewed.
@@ -362,10 +372,27 @@ export function MediaDetailViewer({
   onPageChange,
 }: MediaDetailViewerProps) {
   const router = useRouter()
+  const [issuance, setIssuance] = useState(0)
+  const issuedUrlRef = useRef(viewerUrl)
+  useEffect(() => {
+    issuedUrlRef.current = viewerUrl
+  }, [viewerUrl])
+
   // Retry re-runs the route loader, which issues a fresh signed viewer URL
-  // (1h TTL, ADR 0002) — recovering both missing and expired URLs.
+  // (1h TTL, ADR 0002) — recovering both missing and expired URLs. A reissue
+  // that changes the URL recovers through the viewerUrl prop on its own; only
+  // a byte-identical reissue (same-second re-signing) leaves it unchanged, so
+  // the issuance bump remounts the video and Office viewers just for that case.
   const refreshViewerUrl = useCallback(() => {
-    void router.invalidate()
+    const failed = issuedUrlRef.current
+    void router
+      .invalidate()
+      .then(() => {
+        if (issuedUrlRef.current === failed) {
+          setIssuance((count) => count + 1)
+        }
+      })
+      .catch(() => {})
   }, [router])
   const viewModel = buildMediaContentViewModel(media)
   const isVideo =
@@ -396,6 +423,7 @@ export function MediaDetailViewer({
           viewModel={viewModel}
           media={media}
           viewerUrl={viewerUrl}
+          issuance={issuance}
           initialPage={initialPage}
           onPageChange={onPageChange}
           onRetry={refreshViewerUrl}

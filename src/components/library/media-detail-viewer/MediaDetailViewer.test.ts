@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MediaDetailViewer } from './MediaDetailViewer'
@@ -55,9 +55,10 @@ function renderViewer(viewerUrl: string | null) {
 describe('MediaDetailViewer office recovery', () => {
   beforeEach(() => {
     mocks.invalidate.mockReset()
+    mocks.invalidate.mockResolvedValue(undefined)
   })
 
-  it('keeps a persistent retry action that reissues the signed URL and remounts the iframe', () => {
+  it('keeps a persistent retry action that reissues the signed URL and remounts the iframe', async () => {
     const { container, rerender, getByRole } = renderViewer(SIGNED_A)
 
     const firstIframe = container.querySelector('iframe')
@@ -65,6 +66,7 @@ describe('MediaDetailViewer office recovery', () => {
 
     fireEvent.click(getByRole('button', { name: /try again/i }))
     expect(mocks.invalidate).toHaveBeenCalledTimes(1)
+    await act(async () => {})
 
     rerender(
       createElement(MediaDetailViewer, {
@@ -78,11 +80,26 @@ describe('MediaDetailViewer office recovery', () => {
     expect(remountedIframe?.getAttribute('src')).toContain('token%3DBBB')
   })
 
-  it('offers retry when the signed URL is missing', () => {
+  it('remounts the iframe when the loader reissues a byte-identical URL', async () => {
+    const { container, getByRole } = renderViewer(SIGNED_A)
+    const firstIframe = container.querySelector('iframe')
+
+    fireEvent.click(getByRole('button', { name: /try again/i }))
+    await act(async () => {})
+
+    // Same-second re-signing returns the identical URL — the retry still
+    // remounts the embed rather than leaving the first failure in place.
+    const iframe = container.querySelector('iframe')
+    expect(iframe).not.toBe(firstIframe)
+    expect(iframe?.getAttribute('src')).toContain('token%3DAAA')
+  })
+
+  it('offers retry when the signed URL is missing', async () => {
     const { getByRole, getByText } = renderViewer(null)
 
     expect(getByText('Document unavailable.')).toBeTruthy()
     fireEvent.click(getByRole('button', { name: /try again/i }))
+    await act(async () => {})
     expect(mocks.invalidate).toHaveBeenCalledTimes(1)
   })
 })
@@ -90,6 +107,7 @@ describe('MediaDetailViewer office recovery', () => {
 describe('MediaDetailViewer uploaded-video recovery', () => {
   beforeEach(() => {
     mocks.invalidate.mockReset()
+    mocks.invalidate.mockResolvedValue(undefined)
   })
 
   it('surfaces a playback failure and recovers as soon as a fresh URL arrives', () => {
@@ -120,7 +138,31 @@ describe('MediaDetailViewer uploaded-video recovery', () => {
     expect(recovered?.getAttribute('src')).toBe(SIGNED_B)
   })
 
-  it('offers retry when the signed URL is missing', () => {
+  it('recovers through retry when the loader reissues a byte-identical URL', async () => {
+    const { container, getByRole, getByText, queryByText } = render(
+      createElement(MediaDetailViewer, {
+        media: VIDEO_MEDIA,
+        viewerUrl: SIGNED_A,
+      }),
+    )
+
+    const failedVideo = container.querySelector('video')
+    expect(failedVideo?.getAttribute('src')).toBe(SIGNED_A)
+    fireEvent.error(failedVideo!)
+    expect(getByText('Video unavailable.')).toBeTruthy()
+
+    fireEvent.click(getByRole('button', { name: /try again/i }))
+    await act(async () => {})
+
+    // The identical reissue remounts the element so the browser re-attempts
+    // the resource — a same-src element would otherwise keep its error state.
+    expect(queryByText('Video unavailable.')).toBeNull()
+    const video = container.querySelector('video')
+    expect(video).not.toBe(failedVideo)
+    expect(video?.getAttribute('src')).toBe(SIGNED_A)
+  })
+
+  it('offers retry when the signed URL is missing', async () => {
     const { getByRole, getByText } = render(
       createElement(MediaDetailViewer, {
         media: VIDEO_MEDIA,
@@ -130,6 +172,7 @@ describe('MediaDetailViewer uploaded-video recovery', () => {
 
     expect(getByText('Video unavailable.')).toBeTruthy()
     fireEvent.click(getByRole('button', { name: /try again/i }))
+    await act(async () => {})
     expect(mocks.invalidate).toHaveBeenCalledTimes(1)
   })
 })
@@ -137,9 +180,10 @@ describe('MediaDetailViewer uploaded-video recovery', () => {
 describe('MediaDetailViewer pdf recovery', () => {
   beforeEach(() => {
     mocks.invalidate.mockReset()
+    mocks.invalidate.mockResolvedValue(undefined)
   })
 
-  it('offers retry when the signed URL is missing', () => {
+  it('offers retry when the signed URL is missing', async () => {
     const { getByRole, getByText } = render(
       createElement(MediaDetailViewer, {
         media: PDF_MEDIA,
@@ -149,6 +193,7 @@ describe('MediaDetailViewer pdf recovery', () => {
 
     expect(getByText('Document unavailable.')).toBeTruthy()
     fireEvent.click(getByRole('button', { name: /try again/i }))
+    await act(async () => {})
     expect(mocks.invalidate).toHaveBeenCalledTimes(1)
   })
 })

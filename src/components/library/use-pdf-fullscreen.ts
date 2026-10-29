@@ -55,7 +55,7 @@ export function usePdfFullscreen(container: HTMLDivElement | null) {
   const native = useNativeFullscreen(container)
   const fallback = useFallbackFullscreen()
 
-  // A surface unmount (e.g. the error state) would strand fallback fullscreen
+  // A surface unmount (e.g. leaving the route) would strand fallback fullscreen
   // with body overflow hidden — exit it so the page stays usable.
   useEffect(() => {
     if (container == null && fallback.isFullscreen) fallback.toggle()

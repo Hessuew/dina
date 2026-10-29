@@ -90,6 +90,7 @@ describe('PdfViewer document identity', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
 
+    const surface = container.firstChild
     const viewport = container.querySelector('.overflow-auto')
     expect(viewport).not.toBeNull()
     if (!viewport) throw new Error('PDF viewport should be rendered')
@@ -100,6 +101,9 @@ describe('PdfViewer document identity', () => {
     mockPdfDocumentState.error = true
     rerender(<PdfViewer url="https://files.example/book.pdf?signature=first" />)
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    // The surface element stays mounted through the error so native and
+    // fallback fullscreen survive the retry.
+    expect(container.firstChild).toBe(surface)
 
     mockPdfDocumentState.error = false
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))

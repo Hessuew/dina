@@ -50,6 +50,7 @@ describe('usePdfDocument', () => {
   beforeEach(() => {
     mocks.getDocument.mockReset()
     mocks.invalidate.mockReset()
+    mocks.invalidate.mockResolvedValue(undefined)
   })
 
   it('loads the document and clears the loading state', async () => {
@@ -165,7 +166,7 @@ describe('usePdfDocument', () => {
     expect(result.current.numPages).toBe(4)
   })
 
-  it('re-runs the route loader on retry without issuing another task itself', async () => {
+  it('re-runs the route loader on retry and reloads when the reissue is byte-identical', async () => {
     const first = fakeTask()
     const { result } = renderHook(() => usePdfDocument(URL_A))
     await act(async () => {
@@ -175,10 +176,80 @@ describe('usePdfDocument', () => {
     expect(result.current.error).toBe(true)
     mocks.getDocument.mockClear()
 
+    const second = fakeTask()
     act(() => result.current.retry())
+    await act(async () => {})
 
+    // Same-second re-signing returns the identical URL — the retry still
+    // drives a fresh load rather than leaving the error pinned.
     expect(mocks.invalidate).toHaveBeenCalledTimes(1)
-    expect(mocks.getDocument).not.toHaveBeenCalled()
+    expect(mocks.getDocument).toHaveBeenCalledTimes(1)
+    expect(mocks.getDocument).toHaveBeenLastCalledWith({ url: URL_A })
+
+    await act(async () => {
+      second.resolve(fakeDoc(7))
+      await second.task.promise
+    })
+    expect(result.current.error).toBe(false)
+    expect(result.current.pdf?.numPages).toBe(7)
+  })
+
+  it('reloads only against the freshly issued URL after retry', async () => {
+    const first = fakeTask()
+    const { result, rerender } = renderHook(({ url }) => usePdfDocument(url), {
+      initialProps: { url: URL_A },
+    })
+    await act(async () => {
+      first.reject(new Error('network'))
+      await first.task.promise.catch(() => {})
+    })
+    mocks.getDocument.mockClear()
+
+    const second = fakeTask()
+    act(() => {
+      result.current.retry()
+      rerender({ url: URL_A_RESIGNED })
+    })
+    await act(async () => {})
+
+    // The changed URL drives the load itself — no duplicate task, and no
+    // task goes out against the stale URL.
+    expect(mocks.invalidate).toHaveBeenCalledTimes(1)
+    expect(mocks.getDocument).not.toHaveBeenCalledWith({ url: URL_A })
+    expect(mocks.getDocument).toHaveBeenCalledTimes(1)
+    expect(mocks.getDocument).toHaveBeenLastCalledWith({
+      url: URL_A_RESIGNED,
+    })
+
+    await act(async () => {
+      second.resolve(fakeDoc(10))
+      await second.task.promise
+    })
+    expect(result.current.error).toBe(false)
+    expect(result.current.pdf?.numPages).toBe(10)
+  })
+
+  it('clamps a preserved page to the newly loaded document length', async () => {
+    const first = fakeTask()
+    const { result, rerender } = renderHook(({ url }) => usePdfDocument(url), {
+      initialProps: { url: URL_A },
+    })
+    await act(async () => {
+      first.resolve(fakeDoc(10))
+      await first.task.promise
+    })
+    act(() => result.current.setPageNum(8))
+
+    const second = fakeTask()
+    rerender({ url: URL_A_RESIGNED })
+    await act(async () => {
+      second.resolve(fakeDoc(3))
+      await second.task.promise
+    })
+
+    expect(result.current.pageNum).toBe(3)
+    expect(result.current.numPages).toBe(3)
+    expect(result.current.error).toBe(false)
   })
 
   it('flags an error when getDocument throws synchronously', () => {

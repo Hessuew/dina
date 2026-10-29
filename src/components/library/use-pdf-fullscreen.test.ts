@@ -101,7 +101,7 @@ describe('usePdfFullscreen', () => {
     expect(result.current.isFallbackFullscreen).toBe(true)
     expect(document.body.style.overflow).toBe('hidden')
 
-    // The error state unmounts the surface: the fallback must not strand.
+    // Unmounting the viewer surface must not strand the fallback.
     rerender({ container: null })
 
     expect(result.current.isFallbackFullscreen).toBe(false)

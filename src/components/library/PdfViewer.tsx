@@ -499,6 +499,8 @@ type PdfViewerSurfaceProps = {
   numPages: number
   setPageNum: Dispatch<SetStateAction<number>>
   isLoading: boolean
+  isError: boolean
+  onRetry: () => void
   isFullscreen: boolean
   isFallbackFullscreen: boolean
   onToggleFullscreen: () => void
@@ -518,15 +520,19 @@ function PdfViewerSurface(props: PdfViewerSurfaceProps) {
       )}
     >
       <PdfLoadingState isLoading={props.isLoading} />
-      <PdfCanvasViewport
-        canvasRef={props.canvasRef}
-        viewportRef={props.viewportRef}
-        onScroll={props.zoom.onScroll}
-        pageSize={props.pageSize}
-        zoom={props.zoom.zoom}
-        isFullscreen={props.isFullscreen}
-        pointerHandlers={props.zoom.pointerHandlers}
-      />
+      {props.isError ? (
+        <PdfErrorState onRetry={props.onRetry} />
+      ) : (
+        <PdfCanvasViewport
+          canvasRef={props.canvasRef}
+          viewportRef={props.viewportRef}
+          onScroll={props.zoom.onScroll}
+          pageSize={props.pageSize}
+          zoom={props.zoom.zoom}
+          isFullscreen={props.isFullscreen}
+          pointerHandlers={props.zoom.pointerHandlers}
+        />
+      )}
       {props.numPages > 0 && (
         <PdfViewerControls
           visible={props.chrome.chromeVisible}
@@ -669,8 +675,8 @@ export function PdfViewer({
   initialPage?: number | null
   onPageChange?: (page: number) => void
 }) {
-  // Callback-ref state (not a RefObject) so the error state's surface
-  // unmount/remount re-runs the size and fullscreen observers on the new node.
+  // Callback-ref state (not a RefObject) so the size and fullscreen observers
+  // attach to the live surface node and re-run if it is ever remounted.
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -702,10 +708,8 @@ export function PdfViewer({
     onPageChange,
   })
 
-  if (error) {
-    return <PdfErrorState onRetry={retry} />
-  }
-
+  // The surface stays mounted through load errors so fullscreen — native and
+  // fallback — plus page, zoom, scroll, and position survive the retry.
   return (
     <PdfViewerSurface
       containerRef={setContainerEl}
@@ -717,6 +721,8 @@ export function PdfViewer({
       numPages={numPages}
       setPageNum={setPageNum}
       isLoading={loading}
+      isError={error}
+      onRetry={retry}
       isFullscreen={isFullscreen}
       isFallbackFullscreen={isFallbackFullscreen}
       onToggleFullscreen={toggle}
