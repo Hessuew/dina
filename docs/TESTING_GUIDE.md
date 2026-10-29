@@ -35,7 +35,8 @@ test.
 
 Tests live next to the code they cover:
 `src/utils/<feature>/domain/<feature>.domain.test.ts`. Vitest discovers them via
-`src/**/*.test.ts` (see `vitest.config.ts`).
+`src/**/*.test.ts` (see `vitest.config.ts`, which also includes
+`src/**/*.test.tsx` for jsdom component tests).
 
 ### Conventions
 
