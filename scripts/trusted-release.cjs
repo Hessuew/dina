@@ -63,10 +63,12 @@ function listMainWorkflowRuns(github, owner, repo, workflowId) {
 }
 
 async function listDeploymentsWithStatuses(github, owner, repo) {
-  const deployments = await github.paginate(
-    github.rest.repos.listDeployments,
-    { owner, repo, environment: 'production', per_page: 100 },
-  )
+  const deployments = await github.paginate(github.rest.repos.listDeployments, {
+    owner,
+    repo,
+    environment: 'production',
+    per_page: 100,
+  })
   return Promise.all(
     deployments.map(async (deployment) => ({
       ...deployment,
