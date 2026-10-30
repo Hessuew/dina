@@ -184,6 +184,12 @@ jobs:
           VITE_APP_VERSION: ${{ steps.identity.outputs.tag }}
           VITE_SENTRY_ENVIRONMENT: preview
         run: bun run build
+      - name: Check pre-production Worker metadata access
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREPRODUCTION_WORKER_NAME: ${{ env.PREPRODUCTION_WORKER_NAME }}
+        run: bun scripts/preproduction-worker-metadata-check.ts
       - id: upload
         name: Upload the pre-production Worker version
         env:

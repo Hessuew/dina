@@ -233,6 +233,10 @@ describe('pre-production gate workflow semantics', () => {
       preproduction,
       'Generate the isolated pre-production Worker config',
     )
+    const metadata = stepByName(
+      preproduction,
+      'Check pre-production Worker metadata access',
+    )
     const upload = stepByName(
       preproduction,
       'Upload the pre-production Worker version',
@@ -240,9 +244,21 @@ describe('pre-production gate workflow semantics', () => {
     const serve = stepByName(preproduction, 'Serve the pre-production version')
 
     expect(generate?.run).toContain('preproduction-wrangler-config.ts')
+    expect(metadata?.run).toBe(
+      'bun scripts/preproduction-worker-metadata-check.ts',
+    )
+    expect(metadata?.env?.CLOUDFLARE_API_TOKEN).toBe(
+      '${{ secrets.CLOUDFLARE_API_TOKEN }}',
+    )
+    expect(metadata?.env?.CLOUDFLARE_ACCOUNT_ID).toBe(
+      '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+    )
     expect(upload?.run).toContain('wrangler.preproduction.generated.jsonc')
     expect(upload?.run).toContain('versions upload')
     expect(upload?.run).toContain('--keep-vars')
+    expect(steps(preproduction).indexOf(metadata!)).toBeLessThan(
+      steps(preproduction).indexOf(upload!),
+    )
     expect(serve?.run).toContain('versions deploy')
     expect(serve?.run).toContain('$VERSION_ID@100')
     expect(serve?.run).not.toContain('wrangler.jsonc')
