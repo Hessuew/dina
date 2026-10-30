@@ -66,6 +66,33 @@ Create GitHub environments named `development` and `production` with these value
 | development | Variable | `DEVELOPMENT_SEED_EMAIL`          |
 | production  | Secret   | `DATABASE_URL`                    |
 
+A third GitHub environment, `pre-production`, serves the isolated
+`christ-dina-preproduction` Worker that the `Main release gate` deploys and
+smokes for every gated commit (ADR 0028). Its Supabase values must point at the
+`development` branch only — the gate rejects the production project ref.
+Required values:
+
+| Environment    | Kind     | Name                          |
+| -------------- | -------- | ----------------------------- |
+| pre-production | Variable | `SUPABASE_URL`                |
+| pre-production | Variable | `VITE_SUPABASE_URL`           |
+| pre-production | Variable | `VITE_SUPABASE_ANON_KEY`      |
+| pre-production | Variable | `PREPRODUCTION_ORIGIN`        |
+| pre-production | Variable | `PREPRODUCTION_HYPERDRIVE_ID` |
+| pre-production | Variable | `PREPRODUCTION_JOURNEY_PATHS` |
+
+The gate job also resolves `SUPABASE_PRODUCTION_PROJECT_REF` from repository
+scope — the same non-secret production project ref the `development`
+environment uses — as its isolation tripwire. It must stay non-empty so the
+job can reject Supabase URLs that resolve to the production project.
+
+The pre-production Worker's `SUPABASE_SERVICE_ROLE_KEY` is a Cloudflare Worker
+secret on `christ-dina-preproduction`, never a GitHub value. Its Hyperdrive
+binding (`PREPRODUCTION_HYPERDRIVE_ID`, currently
+`26d7feedba694dbd98bfd47cac5b5c5f`) must target the `development` branch's
+connection string. The full variable and credential list lives in
+[`docs/plan/SECRET_INVENTORY.md`](plan/SECRET_INVENTORY.md).
+
 The serialized `Main release gate` runs the full integration suite and production build for every
 runtime change. When its push diff includes `drizzle/**`, a dependent job migrates the hosted
 development branch and idempotently creates its synthetic admin/profile and Storage buckets. A
@@ -73,7 +100,8 @@ manual `Main release gate` dispatch with `run_development_migration=true` retrie
 job after a reviewed main release.
 
 `.github/workflows/production-release.yml` listens only for a successful
-push-triggered main gate, creates an immutable UTC release tag, waits for the
+push-triggered main gate, verifies pre-production gate evidence for the exact
+target SHA, creates an immutable UTC release tag, waits for the
 protected `production` environment approval, replays the migration chain, and
 applies pending migrations without seeding. A manual main-gate dispatch remains
 a development migration retry and does not promote production. It then promotes

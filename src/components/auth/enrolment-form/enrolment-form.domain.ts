@@ -40,10 +40,7 @@ export function buildEnrolmentSubmissionData(
 }
 
 export type EnrolmentKeyNavigation =
-  | 'next'
-  | 'next-prevent-default'
-  | 'back'
-  | 'none'
+  'next' | 'next-prevent-default' | 'back' | 'none'
 
 export function resolveEnrolmentKeyNavigation(
   key: string,
@@ -60,10 +57,56 @@ export function resolveEnrolmentKeyNavigation(
 
 type Tracker = (...args: Array<unknown>) => void
 
+export type EnrolmentTrackingScript = {
+  src?: string
+  async?: boolean
+  children?: string
+}
+
+export function buildEnrolmentTrackingScripts(input: {
+  googleAdsId: string | undefined
+  metaPixelId: string | undefined
+}): Array<EnrolmentTrackingScript> {
+  const scripts: Array<EnrolmentTrackingScript> = []
+  if (input.googleAdsId) {
+    scripts.push(
+      {
+        src: `https://www.googletagmanager.com/gtag/js?id=${input.googleAdsId}`,
+        async: true,
+      },
+      {
+        children: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${input.googleAdsId}');
+        `,
+      },
+    )
+  }
+  if (input.metaPixelId) {
+    scripts.push({
+      children: `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${input.metaPixelId}');
+        fbq('track', 'PageView');
+      `,
+    })
+  }
+  return scripts
+}
+
 export interface EnrolmentSuccessEffectsInput {
   success: boolean | undefined
   windowRef: { gtag?: Tracker; fbq?: Tracker } | undefined
-  googleAdsId: string
+  googleAdsId: string | undefined
   onSubmitted: () => void
   navigate: () => void
 }
@@ -73,7 +116,7 @@ export function runEnrolmentSuccessEffects(
 ): void {
   if (!input.success) return
   input.onSubmitted()
-  if (input.windowRef?.gtag) {
+  if (input.windowRef?.gtag && input.googleAdsId) {
     input.windowRef.gtag('event', 'conversion', {
       send_to: `${input.googleAdsId}/-2LiCJCpp7AcEJ6zn81D`,
       value: 1.0,

@@ -10,6 +10,7 @@ count.txt
 .wrangler
 .output
 .vinxi
+wrangler.preproduction.generated.jsonc
 todos.json
 worker-configuration.d.ts
 /coverage

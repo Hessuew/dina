@@ -7,6 +7,7 @@ import {
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,
+  resolveSmokeAccessHeaders,
   validateExpectedReleasePayload,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
@@ -117,6 +118,30 @@ describe('resolveHealthSmokeHeaders', () => {
 
   it('rejects incomplete version override configuration', () => {
     expect(() => resolveHealthSmokeHeaders('version-123', undefined)).toThrow()
+  })
+})
+
+describe('resolveSmokeAccessHeaders', () => {
+  it('builds the Cloudflare Access service token headers', () => {
+    expect(resolveSmokeAccessHeaders(' client-id.access ', 'secret')).toEqual({
+      'CF-Access-Client-Id': 'client-id.access',
+      'CF-Access-Client-Secret': 'secret',
+    })
+  })
+
+  it('sends no Access headers when the service token is not configured', () => {
+    expect(resolveSmokeAccessHeaders(undefined, undefined)).toEqual({})
+  })
+
+  it.each([
+    ['client-id.access', undefined],
+    [undefined, 'secret'],
+    [' ', 'secret'],
+    ['client-id.access', '  '],
+  ])('rejects a partial service token %j', (clientId, clientSecret) => {
+    expect(() => resolveSmokeAccessHeaders(clientId, clientSecret)).toThrow(
+      /supplied together/u,
+    )
   })
 })
 
