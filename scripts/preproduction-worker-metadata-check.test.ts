@@ -20,12 +20,12 @@ function fetcherFor(
   lastDeployedFrom: string | undefined,
   overrides: (url: URL) => Response | undefined = () => undefined,
 ) {
-  return vi.fn(async (input: RequestInfo | URL) => {
+  return vi.fn((input: RequestInfo | URL) => {
     const url = new URL(String(input))
     if (url.pathname.endsWith('/workers/services/christ-dina-preproduction')) {
-      return serviceResponse(lastDeployedFrom)
+      return Promise.resolve(serviceResponse(lastDeployedFrom))
     }
-    return overrides(url) ?? success([])
+    return Promise.resolve(overrides(url) ?? success([]))
   })
 }
 
@@ -52,8 +52,7 @@ describe('checkPreproductionWorkerMetadata', () => {
     ).resolves.toBe(true)
 
     expect(fetcher).toHaveBeenCalledTimes(11)
-    const base =
-      'https://api.cloudflare.com/client/v4/accounts/account-id'
+    const base = 'https://api.cloudflare.com/client/v4/accounts/account-id'
     const headers = { headers: { Authorization: 'Bearer private-token' } }
     for (const path of [
       '/workers/services/christ-dina-preproduction',
@@ -83,15 +82,13 @@ describe('checkPreproductionWorkerMetadata', () => {
     ).resolves.toBe(true)
 
     expect(fetcher).toHaveBeenCalledTimes(5)
-    const paths = fetcher.mock.calls.map(([input]) =>
-      new URL(String(input)).pathname,
+    const paths = fetcher.mock.calls.map(
+      ([input]) => new URL(String(input)).pathname,
     )
-    expect(
-      paths.some((path) => path.includes('/environments/')),
-    ).toBe(false)
+    expect(paths.some((path) => path.includes('/environments/'))).toBe(false)
     expect(paths.some((path) => path.includes('/schedules'))).toBe(false)
     expect(write).toHaveBeenCalledWith(
-      "service: remote worker config surfaces skipped (last_deployed_from: wrangler)",
+      'service: remote worker config surfaces skipped (last_deployed_from: wrangler)',
     )
   })
 
@@ -118,6 +115,8 @@ describe('checkPreproductionWorkerMetadata', () => {
       'routes: HTTP 403 (Cloudflare codes: 10000)',
     )
     expect(write.mock.calls.join(' ')).not.toContain('private-token')
-    expect(write.mock.calls.join(' ')).not.toContain('sensitive response detail')
+    expect(write.mock.calls.join(' ')).not.toContain(
+      'sensitive response detail',
+    )
   })
 })

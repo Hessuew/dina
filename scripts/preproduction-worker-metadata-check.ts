@@ -38,9 +38,9 @@ export async function checkPreproductionWorkerMetadata({
   async function check<T>(label: string, path: string) {
     try {
       const response = await fetcher(`${base}${path}`, { headers })
-      const payload = (await response.json().catch(() => null)) as
-        | CloudflareEnvelope<T>
-        | null
+      const payload = (await response
+        .json()
+        .catch(() => null)) as CloudflareEnvelope<T> | null
       const codes = payload?.errors
         ?.map((error) => error.code)
         .filter((code): code is number | string => code !== undefined)
