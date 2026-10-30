@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useRouteContext,
 } from '@tanstack/react-router'
 
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -163,7 +164,7 @@ function useAnalyticsUser(user: UserContext | null | undefined) {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext()
+  const { user } = useRouteContext({ strict: false })
   const role = user?.role || 'student'
 
   useSentryUser(user)

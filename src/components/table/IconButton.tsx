@@ -12,7 +12,7 @@ type IconButtonProps = {
   icon: ComponentType<{ className?: string }>
   label: string
   onClick?: () => void
-  to?: LinkProps
+  to?: Omit<LinkProps, 'from'>
   disabled?: boolean
   className?: string
 }
