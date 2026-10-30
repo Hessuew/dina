@@ -403,6 +403,8 @@ jobs:
             echo "No source-map artifact was returned for $RELEASE_TAG"
             exit 1
           fi
+      - name: Remove source maps from public assets
+        run: find dist/client -type f -name '*.map' -delete
       - id: upload
         name: Upload an undeployed Cloudflare Worker version
         env:

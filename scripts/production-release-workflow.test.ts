@@ -75,6 +75,7 @@ type ParsedWorkflow = {
     sentryUrlsValidated: boolean
     sentryEndpointValidationHasNoToken: boolean
     sentryEndpointValidationBeforeSourceMaps: boolean
+    sourceMapsStrippedBeforeUpload: boolean
   }
 }
 
@@ -205,6 +206,12 @@ describe('production release workflow semantics', () => {
     expect(workflow.deploy.sentryUrlsValidated).toBe(true)
     expect(workflow.deploy.sentryEndpointValidationHasNoToken).toBe(true)
     expect(workflow.deploy.sentryEndpointValidationBeforeSourceMaps).toBe(true)
+  })
+
+  it('removes client source maps from uploaded assets after Better Stack verification', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.deploy.sourceMapsStrippedBeforeUpload).toBe(true)
   })
 
   it('records the trusted previous release before publication and rollback', async () => {
@@ -393,6 +400,13 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const upload = step(deploySteps, (item) => item.name === 'Upload an undeployed Cloudflare Worker version')
     const sourceMapUpload = step(deploySteps, (item) => item.name === 'Upload tagged source maps')
     const sourceMapVerify = step(deploySteps, (item) => item.name === 'Verify that the tagged source maps are queryable')
+    const stripSourceMaps = step(deploySteps, (item) => item.name === 'Remove source maps from public assets')
+    const stripSourceMapsWords = shellWords(stripSourceMaps?.run)
+    const removesClientSourceMaps =
+      stripSourceMapsWords.includes('find') &&
+      stripSourceMapsWords.some((word) => word.startsWith('dist/client')) &&
+      stripSourceMapsWords.includes('*.map') &&
+      stripSourceMapsWords.includes('-delete')
     const sentryEndpointValidation = step(deploySteps, (item) => item.id === 'validate_sentry_url')
     const deployCheckouts = deploySteps.filter((item) => item.uses === 'actions/checkout@v4')
     console.log(JSON.stringify({
@@ -476,6 +490,13 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
             deploySteps.indexOf(sourceMapUpload) &&
           deploySteps.indexOf(sentryEndpointValidation) <
             deploySteps.indexOf(sourceMapVerify),
+        sourceMapsStrippedBeforeUpload:
+          removesClientSourceMaps &&
+          deploySteps.indexOf(stripSourceMaps) >
+            deploySteps.indexOf(sourceMapVerify) &&
+          deploySteps.indexOf(stripSourceMaps) >= 0 &&
+          deploySteps.indexOf(stripSourceMaps) <
+            deploySteps.indexOf(upload),
       },
     }))
   `
