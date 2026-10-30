@@ -259,8 +259,9 @@ completed in the external systems before Phase 3 is considered operational:
   `christ-dina-preproduction` `workers.dev` hostname, and set
   `PREPRODUCTION_ACCESS_CLIENT_ID` and `PREPRODUCTION_ACCESS_CLIENT_SECRET`
   in the `pre-production` environment;
-- set the protected `PREPRODUCTION_GATE_ENABLED=true` once the pre-production
-  gate is proven on a reviewed main push;
+- set the protected `PREPRODUCTION_GATE_ENABLED=true` once the `pre-production`
+  environment is populated; the next reviewed main push then deploys and smokes
+  the isolated Worker, proving the gate before production enablement;
 - protect `main` with pull request, quality-gate, and no-force-push rules;
 - create the active immutable `v*` tag ruleset and the scoped
   `RELEASE_TAG_RULESET_TOKEN` secret the resolve job uses to verify it;

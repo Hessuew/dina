@@ -33,6 +33,7 @@ type ParsedWorkflows = {
   evidenceScript: string
   evidenceEnv: Record<string, string>
   journeyEnv: Record<string, string>
+  productionBuildScript: string
 }
 
 async function readWorkflows(): Promise<ParsedWorkflows> {
@@ -46,6 +47,7 @@ async function readWorkflows(): Promise<ParsedWorkflows> {
     const evidence = resolveSteps[evidenceIndex] ?? {}
     const deploySteps = production.jobs.deploy.steps
     const journey = deploySteps.find((step) => step.name === 'Run affected public journey smoke through the version override') ?? {}
+    const productionBuild = deploySteps.find((step) => step.name === 'Build the tagged production artifact and upload source maps') ?? {}
     console.log(JSON.stringify({
       preproduction: main.jobs.preproduction,
       gateJobIndex: jobNames.indexOf('preproduction'),
@@ -55,6 +57,7 @@ async function readWorkflows(): Promise<ParsedWorkflows> {
       evidenceScript: String(evidence.with?.script ?? ''),
       evidenceEnv: evidence.env ?? {},
       journeyEnv: journey.env ?? {},
+      productionBuildScript: String(productionBuild.run ?? ''),
     }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script])
@@ -247,6 +250,19 @@ describe('pre-production gate workflow semantics', () => {
       '${{ steps.upload.outputs.version_id }}',
     )
     expect(journeyEnv.SMOKE_WORKER_NAME).toBe('${{ env.WORKER_NAME }}')
+  })
+
+  it('fails the production build before compiling when conversion tracking ids are unset', async () => {
+    const { productionBuildScript } = await readWorkflows()
+
+    const adsGuard = productionBuildScript.indexOf('-z "$VITE_GOOGLE_ADS_ID"')
+    const pixelGuard = productionBuildScript.indexOf('-z "$VITE_META_PIXEL_ID"')
+    const buildIndex = productionBuildScript.indexOf('bun run build')
+
+    expect(adsGuard).toBeGreaterThanOrEqual(0)
+    expect(pixelGuard).toBeGreaterThanOrEqual(0)
+    expect(buildIndex).toBeGreaterThan(Math.max(adsGuard, pixelGuard))
+    expect(productionBuildScript.slice(0, buildIndex)).toContain('exit 1')
   })
 
   it('keeps the generated pre-production config ignored by git', async () => {

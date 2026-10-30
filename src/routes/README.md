@@ -34,6 +34,7 @@ This folder defines:
     - Google tag loads on page load; conversion event fires when `success=true`
     - Tracking IDs configured via optional `VITE_GOOGLE_ADS_ID` and
       `VITE_META_PIXEL_ID`; trackers are omitted when unset (preview builds)
+      and the production release build fails closed when either is unset
 
 - **API-style routes**
   - Some files may implement server-side endpoints using route files (e.g. upload routes).

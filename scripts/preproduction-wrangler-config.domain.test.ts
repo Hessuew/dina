@@ -131,12 +131,38 @@ describe('buildPreproductionWranglerConfig', () => {
     { workerName: 'CHRIST-DINA-PREPRODUCTION' },
     { workerName: ' ' },
     { hyperdriveId: PRODUCTION_HYPERDRIVE_ID },
+    { hyperdriveId: PRODUCTION_HYPERDRIVE_ID.toUpperCase() },
     { hyperdriveId: 'replace-me' },
     { hyperdriveId: '' },
   ])('rejects unsafe identity %o', (overrides) => {
     expect(() =>
       buildPreproductionWranglerConfig(baseConfig(), options(overrides)),
     ).toThrowError()
+  })
+
+  it('rejects the production Hyperdrive id regardless of the base config letter case', () => {
+    expect(() =>
+      buildPreproductionWranglerConfig(
+        {
+          ...baseConfig(),
+          hyperdrive: [
+            { binding: 'HYPERDRIVE', id: PRODUCTION_HYPERDRIVE_ID.toUpperCase() },
+          ],
+        },
+        options({ hyperdriveId: PRODUCTION_HYPERDRIVE_ID }),
+      ),
+    ).toThrowError()
+  })
+
+  it('normalizes a mixed-case Hyperdrive id before emitting it', () => {
+    const config = buildPreproductionWranglerConfig(
+      baseConfig(),
+      options({ hyperdriveId: 'A'.repeat(32) }),
+    )
+
+    expect(config.hyperdrive).toEqual([
+      { binding: 'HYPERDRIVE', id: DEVELOPMENT_HYPERDRIVE_ID },
+    ])
   })
 
   it('refuses to reuse the production Worker name even when the base name changes', () => {

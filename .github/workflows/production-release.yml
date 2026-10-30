@@ -367,7 +367,12 @@ jobs:
         env:
           RELEASE_SOURCE_MAPS_ENABLED: 'true'
           VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
-        run: bun run build -- --outDir ../dist --emptyOutDir
+        run: |
+          if [[ -z "$VITE_GOOGLE_ADS_ID" || -z "$VITE_META_PIXEL_ID" ]]; then
+            echo "VITE_GOOGLE_ADS_ID and VITE_META_PIXEL_ID must be configured for the production build"
+            exit 1
+          fi
+          bun run build -- --outDir ../dist --emptyOutDir
       - name: Register the Better Stack production release
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

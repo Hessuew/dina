@@ -8,7 +8,7 @@ export type PreproductionConfigOptions = {
 }
 
 const WORKER_NAME_PATTERN = /^[a-z0-9-]{1,63}$/u
-const HYPERDRIVE_ID_PATTERN = /^[0-9a-f]{32}$/iu
+const HYPERDRIVE_ID_PATTERN = /^[0-9a-f]{32}$/u
 const PRODUCTION_WORKER_NAME = 'christ-dina'
 const SAFE_CONFIG_KEYS = [
   'compatibility_date',
@@ -35,7 +35,7 @@ export function buildPreproductionWranglerConfig(
   options: PreproductionConfigOptions,
 ): WranglerConfig {
   const workerName = options.workerName.trim()
-  const hyperdriveId = options.hyperdriveId.trim()
+  const hyperdriveId = options.hyperdriveId.trim().toLowerCase()
   validatePreproductionIdentity(base, workerName, hyperdriveId)
 
   const hyperdrive = Array.isArray(base.hyperdrive) ? base.hyperdrive : []
@@ -86,7 +86,7 @@ function productionHyperdriveIds(base: WranglerConfig): Array<string> {
     typeof entry === 'object' &&
     entry &&
     typeof (entry as { id?: unknown }).id === 'string'
-      ? [(entry as { id: string }).id]
+      ? [(entry as { id: string }).id.toLowerCase()]
       : [],
   )
 }
