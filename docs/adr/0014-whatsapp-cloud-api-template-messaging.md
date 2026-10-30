@@ -28,6 +28,8 @@ table.**
 - **Provider — Meta Cloud API direct** (`fetch` to `graph.facebook.com`): no per-message BSP
   markup, no extra vendor dependency. Secrets: `WHATSAPP_ACCESS_TOKEN`,
   `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_VERSION` (t3-env, Cloudflare binding).
+  `WHATSAPP_ENABLED=false` fails sends before any network call (pre-production sets it —
+  ADR 0028); the token and phone number id are required at send time only while enabled.
 - **Port/adapter + composition root** (`src/utils/whatsapp/`): `WhatsAppSender` port,
   `CloudApiWhatsAppSender` adapter, `get/setWhatsAppSender` singleton (same seam as
   `src/utils/authz/service.ts`). Integration tests inject a fake sender against the real

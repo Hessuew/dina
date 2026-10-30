@@ -203,6 +203,30 @@ describe('pre-production gate workflow semantics', () => {
     expect(identity?.run).not.toContain('VITE_META_PIXEL_ID')
   })
 
+  it('keeps WhatsApp sends disabled and credential-free in pre-production', async () => {
+    const { preproduction } = await readWorkflows()
+    const identity = stepByName(
+      preproduction,
+      'Validate pre-production isolation inputs',
+    )
+    const upload = stepByName(
+      preproduction,
+      'Upload the pre-production Worker version',
+    )
+    const jobEnv = Object.keys(preproduction.env ?? {})
+
+    expect(preproduction.env?.WHATSAPP_ENABLED).toBe('false')
+    expect(upload?.run).toContain('--var "WHATSAPP_ENABLED:$WHATSAPP_ENABLED"')
+    for (const credential of [
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+    ]) {
+      expect(jobEnv).not.toContain(credential)
+      expect(identity?.run).not.toContain(credential)
+      expect(upload?.run).not.toContain(credential)
+    }
+  })
+
   it('generates an isolated Wrangler config and serves the uploaded version directly', async () => {
     const { preproduction } = await readWorkflows()
     const generate = stepByName(

@@ -11,9 +11,16 @@ export const env = createEnv({
     APP_URL: z.url(),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM: z.string().trim().min(1),
-    WHATSAPP_ACCESS_TOKEN: z.string().min(1),
-    WHATSAPP_PHONE_NUMBER_ID: z.string().min(1),
+    WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default('v21.0'),
+    // Kill switch for outbound WhatsApp sends: the Cloud API sender fails
+    // before any network call when false. Pre-production sets false until
+    // genuine Meta credentials exist.
+    WHATSAPP_ENABLED: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default('true')
+      .transform((value) => value === true || value === 'true'),
     DATABASE_URL: z.string().optional(),
     BETTER_STACK_DSN: z.url().optional(),
   },
@@ -50,6 +57,7 @@ export const env = createEnv({
     WHATSAPP_ACCESS_TOKEN: cfEnv.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_PHONE_NUMBER_ID: cfEnv.WHATSAPP_PHONE_NUMBER_ID,
     WHATSAPP_API_VERSION: cfEnv.WHATSAPP_API_VERSION,
+    WHATSAPP_ENABLED: cfEnv.WHATSAPP_ENABLED,
     BETTER_STACK_DSN: cfEnv.BETTER_STACK_DSN,
     // Client-side variables from import.meta.env
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,

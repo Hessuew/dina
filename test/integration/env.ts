@@ -13,6 +13,7 @@ export const env = {
   WHATSAPP_ACCESS_TOKEN: 'test',
   WHATSAPP_PHONE_NUMBER_ID: 'test',
   WHATSAPP_API_VERSION: 'v21.0',
+  WHATSAPP_ENABLED: true,
   DATABASE_URL: 'pglite://memory',
   VITE_SUPABASE_URL: 'http://localhost',
   VITE_SUPABASE_ANON_KEY: 'test',

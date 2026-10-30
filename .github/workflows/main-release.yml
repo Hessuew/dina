@@ -126,7 +126,10 @@ jobs:
       SUPABASE_PRODUCTION_PROJECT_REF: ${{ vars.SUPABASE_PRODUCTION_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       RESEND_FROM: ${{ vars.RESEND_FROM }}
-      WHATSAPP_PHONE_NUMBER_ID: ${{ vars.WHATSAPP_PHONE_NUMBER_ID }}
+      # WhatsApp is explicitly disabled in pre-production: no genuine Meta
+      # credentials exist, so sends fail before any network call while email
+      # smoke checks still exercise Resend.
+      WHATSAPP_ENABLED: 'false'
       WHATSAPP_API_VERSION: ${{ vars.WHATSAPP_API_VERSION || 'v21.0' }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
@@ -151,7 +154,7 @@ jobs:
             CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN \
             PREPRODUCTION_ACCESS_CLIENT_ID PREPRODUCTION_ACCESS_CLIENT_SECRET \
             SUPABASE_PRODUCTION_PROJECT_REF SUPABASE_URL \
-            RESEND_FROM WHATSAPP_PHONE_NUMBER_ID \
+            RESEND_FROM WHATSAPP_ENABLED \
             VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
             if [[ -z "${!name}" ]]; then
               echo "$name is not configured for the pre-production environment"
@@ -200,7 +203,7 @@ jobs:
             --var "SUPABASE_URL:$SUPABASE_URL" \
             --var "APP_URL:$PREPRODUCTION_ORIGIN" \
             --var "RESEND_FROM:$RESEND_FROM" \
-            --var "WHATSAPP_PHONE_NUMBER_ID:$WHATSAPP_PHONE_NUMBER_ID" \
+            --var "WHATSAPP_ENABLED:$WHATSAPP_ENABLED" \
             --var "WHATSAPP_API_VERSION:$WHATSAPP_API_VERSION" \
             --keep-vars \
             --strict

@@ -68,11 +68,17 @@ production.
    recorded a successful pre-production job. A trusted production release
    binding is exempt because that commit was already proven in production.
 6. **Runtime secrets stay outside the gate job.** The job writes only public
-   Worker vars (`SUPABASE_URL`, `APP_URL`, `RESEND_FROM`,
-   `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_VERSION`, release identity vars).
-   `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `WHATSAPP_ACCESS_TOKEN`, and
-   `BETTER_STACK_DSN` remain Cloudflare Worker secrets configured externally on
+   Worker vars (`SUPABASE_URL`, `APP_URL`, `RESEND_FROM`, `WHATSAPP_ENABLED`,
+   `WHATSAPP_API_VERSION`, release identity vars).
+   `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `BETTER_STACK_DSN`
+   remain Cloudflare Worker secrets configured externally on
    the pre-production Worker; the gate fails closed until they exist.
+   WhatsApp is explicitly disabled in pre-production: the job uploads
+   `WHATSAPP_ENABLED=false`, configures no `WHATSAPP_PHONE_NUMBER_ID`, and
+   `WHATSAPP_ACCESS_TOKEN` stays unset because no genuine Meta credentials
+   exist yet. `CloudApiWhatsAppSender` fails before any network request in
+   that state, so the gate still exercises email smoke checks but proves
+   nothing about WhatsApp delivery.
 
 ## Alternatives considered
 

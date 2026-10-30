@@ -116,7 +116,7 @@ A Meta-approved WhatsApp template (Utility category, English) — the only way t
 
 ### WhatsApp Sender (port)
 
-The `WhatsAppSender` interface (`src/utils/whatsapp/types.ts`) behind which the Meta Cloud API adapter (`CloudApiWhatsAppSender`) sits. Swapped via the composition root (`get/setWhatsAppSender`, mirroring `authz`) — integration tests inject a fake; a future provider change stays behind this seam.
+The `WhatsAppSender` interface (`src/utils/whatsapp/types.ts`) behind which the Meta Cloud API adapter (`CloudApiWhatsAppSender`) sits. Swapped via the composition root (`get/setWhatsAppSender`, mirroring `authz`) — integration tests inject a fake; a future provider change stays behind this seam. `WHATSAPP_ENABLED=false` makes the adapter fail before any network call (pre-production sets it until genuine Meta credentials exist); the access token and phone number id are required at send time only while enabled.
 
 ### WhatsApp Message log
 
