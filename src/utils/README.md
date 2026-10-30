@@ -114,6 +114,11 @@ feature consumes them.
     stable error-level logging for unexpected provider exceptions.
   - `auth/logout.ts`: Supabase sign-out adapter with redacted,
     request-correlated `logout_succeeded` / `logout_failed` telemetry.
+  - `auth/root-user-context-cache.ts`: browser-only cache for the root route's
+    resolved `context.user` (60s TTL, epoch invalidation). Call
+    `clearRootUserContextCache` after auth transitions (login, signup, logout,
+    email change) so the next `resolveUserContext` refetches instead of
+    replaying a stale identity.
   - Signup and OTP verification emit redacted delivery, provisioning, rollback,
     auto-login, resend, and persistence-failure events. Invitation/profile
     lookup, OTP update/attempt, invitation acceptance, and verified-OTP cleanup

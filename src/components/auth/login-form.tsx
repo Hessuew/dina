@@ -10,7 +10,7 @@ import { Field, FieldGroup } from '@/components/ui/field'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
-import { clearRootUserContextCache } from '@/routes/__root'
+import { clearRootUserContextCache } from '@/utils/auth/root-user-context-cache'
 import { loginSchema } from '@/schemas/auth.schema'
 import { getLoginErrorMessage } from '@/utils/auth/domain/login-error.domain'
 

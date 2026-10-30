@@ -1,5 +1,3 @@
-// fallow-ignore-file unused-file -- invoked directly by production-release.yml
-
 import {
   createReleaseTag,
   evaluateGuardrails,

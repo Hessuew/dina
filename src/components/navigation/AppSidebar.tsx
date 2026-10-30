@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 
 import { NotificationsMenu } from '@/components/navigation/notifications-menu'
-import { clearRootUserContextCache } from '@/routes/__root'
+import { clearRootUserContextCache } from '@/utils/auth/root-user-context-cache'
 import { NavUser } from '@/components/navigation/nav-user/NavUser'
 import {
   Sidebar,
