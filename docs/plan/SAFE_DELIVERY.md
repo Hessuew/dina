@@ -36,6 +36,13 @@ account URLs remain external configuration and must never be committed.
   `development` branch. The workflow can also be dispatched manually with
   `run_development_migration=true` to retry that dependent job after a
   reviewed main release without creating a no-op migration.
+- The same gate's `Deploy and verify pre-production` job (ADR 0028) deploys
+  the gated commit to the isolated `christ-dina-preproduction` Worker on
+  `workers.dev`, bound to a development-only Hyperdrive, then requires the
+  exact-version health/readiness smoke and the agreed public journeys
+  (`/login`, `/forgot-password`, `/reset-password`) to pass. The job is
+  skipped until the protected `PREPRODUCTION_GATE_ENABLED` variable is `true`;
+  production still fails closed without its evidence.
 - `.github/workflows/production-release.yml` is triggered by a successful
   `Main release gate` on `main`, or manually with a full `target_sha` and
   `standard`/`gradual` profile. It creates a never-reused tag such as
@@ -97,7 +104,8 @@ account URLs remain external configuration and must never be committed.
 both the exact validated commit SHA and its immutable tag:
 
 ```text
-successful Main release gate → production environment approval
+successful Main release gate (incl. pre-production deploy + smoke)
+  → pre-production gate evidence check → production environment approval
   → compatible Supabase migration → tagged build/source maps
   → undeployed Worker version → exact-version smoke
   → standard 100% or gradual 10% → 25% → 50% → 100%
@@ -108,6 +116,15 @@ The workflow records the active Cloudflare version before upload as the rollback
 target. Failed tags remain in Git history for audit and the next tag sequence
 never reuses them. Manual dispatch is allowed only for a full SHA that has a
 successful `Main release gate` run and is reachable from `origin/main`.
+
+Before the release tag is created, the resolve job requires pre-production
+evidence for the exact target SHA: a successful `Deploy and verify
+pre-production` job inside the triggering gate run for automatic promotion, or
+inside a successful gate run for the manually dispatched SHA. A trusted
+production release binding is exempt — that commit was already proven in
+production. A failed, skipped, absent, or SHA-mismatched pre-production result
+fails closed; re-running the `Main release gate` for the commit produces fresh
+evidence.
 
 Standard and gradual promotion are fail-closed unless the configured per-version
 metrics adapter returns request count, error count, p95 latency, and new
@@ -202,6 +219,9 @@ data-loss, downtime, and Storage/Auth implications.
 Before marking a migration release complete, record pass/fail references for:
 
 - pull-request quality gate and main release gate;
+- the pre-production gate job: uploaded `pre-<sha>` Cloudflare version,
+  health/readiness smoke, and the agreed public journeys on the isolated
+  Worker;
 - the immutable release tag and exact SHA promoted to both environments;
 - hosted development migration and synthetic seed;
 - development smoke checks for `/healthz`, `/readyz`, and the affected path;
@@ -222,6 +242,17 @@ messages into repository or Notion documentation.
 The following are intentionally not automated by this repository and must be
 completed in the external systems before Phase 3 is considered operational:
 
+- create the `pre-production` GitHub environment and the isolated
+  `christ-dina-preproduction` Worker, then populate the pre-production
+  variables, Worker secrets, and Cloudflare credential scopes listed in
+  [`docs/plan/SECRET_INVENTORY.md`](SECRET_INVENTORY.md);
+- bind the pre-production Worker's Hyperdrive to the development Supabase
+  project (id `26d7feedba694dbd98bfd47cac5b5c5f`), set
+  `PREPRODUCTION_HYPERDRIVE_ID`, `PREPRODUCTION_ORIGIN`, and
+  `PREPRODUCTION_JOURNEY_PATHS`, and resume the development project only when
+  a gate run should go green;
+- set the protected `PREPRODUCTION_GATE_ENABLED=true` once the pre-production
+  gate is proven on a reviewed main push;
 - protect `main` with pull request, quality-gate, and no-force-push rules;
 - create the active immutable `v*` tag ruleset and the scoped
   `RELEASE_TAG_RULESET_TOKEN` secret the resolve job uses to verify it;

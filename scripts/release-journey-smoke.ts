@@ -1,4 +1,4 @@
-// fallow-ignore-file unused-file -- invoked directly by production-release.yml
+// fallow-ignore-file unused-file -- invoked directly by release workflows
 
 import { fetchWithTimeout } from './http'
 import {
@@ -11,12 +11,20 @@ import {
   parseJourneyPaths,
 } from './release-journey-smoke.domain'
 
-const origin = resolveHealthSmokeUrl(requiredEnv('PRODUCTION_ORIGIN'))
-const versionId = requiredEnv('SMOKE_VERSION_ID')
-const workerName = requiredEnv('SMOKE_WORKER_NAME')
+const origin = resolveHealthSmokeUrl(requiredEnv('SMOKE_BASE_URL'))
+const versionOverrideId = optionalEnv('SMOKE_VERSION_ID')
+const workerName = optionalEnv('SMOKE_WORKER_NAME')
+const expectedVersionId =
+  optionalEnv('SMOKE_EXPECTED_VERSION_ID') ?? versionOverrideId
+if (!expectedVersionId) {
+  throw new Error('SMOKE_EXPECTED_VERSION_ID or SMOKE_VERSION_ID is required')
+}
 const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
-const paths = parseJourneyPaths(requiredEnv('PRODUCTION_JOURNEY_PATHS'))
-const versionSmokeHeaders = resolveHealthSmokeHeaders(versionId, workerName)
+const paths = parseJourneyPaths(requiredEnv('SMOKE_JOURNEY_PATHS'))
+const versionSmokeHeaders = resolveHealthSmokeHeaders(
+  versionOverrideId,
+  workerName,
+)
 
 for (const path of paths) {
   const url = new URL(path, origin)
@@ -29,8 +37,8 @@ for (const path of paths) {
   if (response.status !== 200) {
     throw new Error(`${path}: expected HTTP 200, received ${response.status}`)
   }
-  if (response.headers.get('x-dina-worker-version') !== versionId) {
-    throw new Error(`${path}: response was not served by ${versionId}`)
+  if (response.headers.get('x-dina-worker-version') !== expectedVersionId) {
+    throw new Error(`${path}: response was not served by ${expectedVersionId}`)
   }
 
   if (response.headers.get('x-dina-worker-version-tag') !== expectedRelease) {
@@ -59,9 +67,11 @@ for (const path of paths) {
         `${assetUrl.pathname}: expected HTTP 200, received ${assetResponse.status}`,
       )
     }
-    if (assetResponse.headers.get('x-dina-worker-version') !== versionId) {
+    if (
+      assetResponse.headers.get('x-dina-worker-version') !== expectedVersionId
+    ) {
       throw new Error(
-        `${assetUrl.pathname}: asset was not served by ${versionId}`,
+        `${assetUrl.pathname}: asset was not served by ${expectedVersionId}`,
       )
     }
     if (
@@ -76,9 +86,14 @@ for (const path of paths) {
 }
 
 function requiredEnv(name: string): string {
-  const value = process.env[name]?.trim()
+  const value = optionalEnv(name)
   if (!value) throw new Error(`${name} is required`)
   return value
+}
+
+function optionalEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim()
+  return value || undefined
 }
 
 export {}

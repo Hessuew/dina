@@ -186,6 +186,28 @@ jobs:
                 'Manual target must be the current main commit or a trusted production release commit.',
               )
             }
+      - name: Verify pre-production gate evidence for the target SHA
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+          GATE_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            const { verifyPreproductionGate } = require(
+              `${process.cwd()}/scripts/preproduction-gate.cjs`,
+            )
+            const result = await verifyPreproductionGate(
+              github,
+              context.repo,
+              {
+                targetSha: process.env.TARGET_SHA,
+                gateRunId: process.env.GATE_RUN_ID || null,
+              },
+            )
+            core.info(
+              `Pre-production gate evidence confirmed via ${result.source}` +
+                (result.runId ? ` run ${result.runId}` : ''),
+            )
       - id: identity
         name: Create immutable dated release tag
         env:
@@ -468,10 +490,11 @@ jobs:
         run: bun run scripts/retry-release-smoke.ts health
       - name: Run affected public journey smoke through the version override
         env:
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
           SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
-          PRODUCTION_JOURNEY_PATHS: ${{ env.PRODUCTION_JOURNEY_PATHS }}
+          SMOKE_JOURNEY_PATHS: ${{ env.PRODUCTION_JOURNEY_PATHS }}
         run: bun run scripts/retry-release-smoke.ts journey
       - id: rollout_readiness
         name: Verify version guardrail readiness before promotion
