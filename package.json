@@ -127,5 +127,8 @@
   },
   "trustedDependencies": [
     "@sentry/cli"
-  ]
+  ],
+  "patchedDependencies": {
+    "undici@8.12.3": "patches/undici@8.12.3.patch"
+  }
 }

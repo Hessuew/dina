@@ -11,11 +11,16 @@ type ServiceMetadata = {
   }
 }
 
+type Fetcher = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>
+
 type CheckOptions = {
   accountId: string
   token: string
   workerName: string
-  fetcher?: typeof fetch
+  fetcher?: Fetcher
   write?: (message: string) => void
 }
 

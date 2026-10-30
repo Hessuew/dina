@@ -31,7 +31,7 @@ function fetcherFor(
 
 function options(
   fetcher: ReturnType<typeof fetcherFor>,
-  write: ReturnType<typeof vi.fn>,
+  write: (message: string) => void,
 ) {
   return {
     accountId: 'account-id',
@@ -45,7 +45,7 @@ function options(
 describe('checkPreproductionWorkerMetadata', () => {
   it('checks every surface Wrangler reads for a dashboard-managed worker', async () => {
     const fetcher = fetcherFor('dash')
-    const write = vi.fn()
+    const write = vi.fn<(message: string) => void>()
 
     await expect(
       checkPreproductionWorkerMetadata(options(fetcher, write)),
@@ -76,7 +76,7 @@ describe('checkPreproductionWorkerMetadata', () => {
 
   it('skips dashboard config surfaces when the worker was not deployed from the dashboard', async () => {
     const fetcher = fetcherFor('wrangler')
-    const write = vi.fn()
+    const write = vi.fn<(message: string) => void>()
 
     await expect(
       checkPreproductionWorkerMetadata(options(fetcher, write)),
@@ -108,7 +108,7 @@ describe('checkPreproductionWorkerMetadata', () => {
       }
       return undefined
     })
-    const write = vi.fn()
+    const write = vi.fn<(message: string) => void>()
 
     await expect(
       checkPreproductionWorkerMetadata(options(fetcher, write)),
