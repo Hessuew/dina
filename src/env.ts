@@ -18,9 +18,9 @@ export const env = createEnv({
     // before any network call when false. Pre-production sets false until
     // genuine Meta credentials exist.
     WHATSAPP_ENABLED: z
-      .enum(['true', 'false'])
+      .union([z.boolean(), z.enum(['true', 'false'])])
       .default('true')
-      .transform((value) => value === 'true'),
+      .transform((value) => value === true || value === 'true'),
     DATABASE_URL: z.string().optional(),
     BETTER_STACK_DSN: z.url().optional(),
   },
