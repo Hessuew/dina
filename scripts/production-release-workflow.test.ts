@@ -214,6 +214,51 @@ describe('production release workflow semantics', () => {
     expect(workflow.deploy.publication.beforeRollback).toBe(true)
   })
 
+  it('rolls back to the verified previous version when publication fails after promotion', async () => {
+    const workflow = await readWorkflow()
+    const condition = workflow.deploy.rollback.condition ?? ''
+
+    expect(
+      evaluateCondition(condition, {
+        event_name: 'workflow_run',
+        failure: true,
+        steps: {
+          upload: { outputs: { version_id: 'promoted-version' } },
+          publish: { outcome: 'failure' },
+        },
+      }),
+    ).toBe(true)
+    expect(
+      evaluateCondition(condition, {
+        event_name: 'workflow_run',
+        failure: true,
+        steps: {
+          upload: { outputs: { version_id: 'promoted-version' } },
+          publish: { outcome: 'success' },
+        },
+      }),
+    ).toBe(true)
+    expect(
+      evaluateCondition(condition, {
+        event_name: 'workflow_run',
+        failure: false,
+        steps: {
+          upload: { outputs: { version_id: 'promoted-version' } },
+          publish: { outcome: 'success' },
+        },
+      }),
+    ).toBe(false)
+    expect(
+      evaluateCondition(condition, {
+        event_name: 'workflow_run',
+        failure: true,
+        steps: { upload: { outputs: {} } },
+      }),
+    ).toBe(false)
+    expect(workflow.deploy.rollback.targetFromPreflight).toBe(true)
+    expect(workflow.deploy.rollback.smokeTargetFromPreflight).toBe(true)
+  })
+
   it('keeps production release disabled by default and requires affinity evidence', async () => {
     const workflow = await readWorkflow()
 
@@ -446,6 +491,8 @@ type WorkflowContext = {
     conclusion?: string
     head_branch?: string
   }
+  failure?: boolean
+  steps?: Record<string, { outcome?: string; outputs?: Record<string, string> }>
 }
 
 function evaluateCondition(
@@ -455,6 +502,7 @@ function evaluateCondition(
   const normalized = expression
     .replaceAll('${{', '')
     .replaceAll('}}', '')
+    .replaceAll('failure()', String(context.failure ?? false))
     .trim()
   const values = new Map<string, string | undefined>([
     ['github.event_name', context.event_name],
@@ -466,19 +514,33 @@ function evaluateCondition(
       context.workflow_run?.head_branch,
     ],
   ])
-  const comparisons = normalized.match(/[A-Za-z0-9._-]+\s*==\s*'[^']*'/gu)
+  const comparisons = normalized.match(/[A-Za-z0-9._-]+\s*[!=]=\s*'[^']*'/gu)
   if (!comparisons) throw new Error('Workflow condition has no comparisons')
   let result = normalized
   for (const comparison of comparisons) {
-    const match = /^([A-Za-z0-9._-]+)\s*==\s*'([^']*)'$/u.exec(comparison)
+    const match = /^([A-Za-z0-9._-]+)\s*(==|!=)\s*'([^']*)'$/u.exec(comparison)
     if (!match)
       throw new Error(`Unsupported workflow comparison: ${comparison}`)
-    result = result.replace(
-      comparison,
-      String(values.get(match[1]) === match[2]),
-    )
+    const left = resolveConditionPath(match[1], values, context)
+    const value = match[2] === '==' ? left === match[3] : left !== match[3]
+    result = result.replace(comparison, String(value))
   }
   return evaluateBooleanExpression(result)
+}
+
+function resolveConditionPath(
+  path: string,
+  values: Map<string, string | undefined>,
+  context: WorkflowContext,
+): string | undefined {
+  if (values.has(path)) return values.get(path)
+  const output = /^steps\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)$/u.exec(
+    path,
+  )
+  if (output) return context.steps?.[output[1]]?.outputs?.[output[2]] ?? ''
+  const outcome = /^steps\.([A-Za-z0-9_-]+)\.outcome$/u.exec(path)
+  if (outcome) return context.steps?.[outcome[1]]?.outcome ?? ''
+  throw new Error(`Unsupported workflow condition path: ${path}`)
 }
 
 function evaluateBooleanExpression(expression: string): boolean {

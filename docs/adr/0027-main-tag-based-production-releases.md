@@ -1,4 +1,4 @@
-# ADR 0026 — Main and Immutable Tag-Based Production Releases
+# ADR 0027 — Main and Immutable Tag-Based Production Releases
 
 **Status:** Accepted
 **Date:** 2026-09-29

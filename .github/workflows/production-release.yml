@@ -701,13 +701,8 @@ jobs:
               description: 'Production release evidence published successfully.',
             })
       - id: rollback
-        name: Roll back the Worker after a failed smoke or guardrail
-        if: >-
-          ${{
-            failure() &&
-            steps.upload.outputs.version_id != '' &&
-            steps.publish.outcome != 'failure'
-          }}
+        name: Roll back the Worker after a failed smoke, guardrail, or publication
+        if: failure() && steps.upload.outputs.version_id != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
