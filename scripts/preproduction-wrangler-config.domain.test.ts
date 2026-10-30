@@ -146,7 +146,10 @@ describe('buildPreproductionWranglerConfig', () => {
         {
           ...baseConfig(),
           hyperdrive: [
-            { binding: 'HYPERDRIVE', id: PRODUCTION_HYPERDRIVE_ID.toUpperCase() },
+            {
+              binding: 'HYPERDRIVE',
+              id: PRODUCTION_HYPERDRIVE_ID.toUpperCase(),
+            },
           ],
         },
         options({ hyperdriveId: PRODUCTION_HYPERDRIVE_ID }),

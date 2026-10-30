@@ -33,21 +33,27 @@ function mockGithub({
   }
   return {
     paginate: vi.fn(
-      async (
+      (
         endpoint: unknown,
         params: Record<string, unknown>,
       ): Promise<Array<unknown>> => {
-        if (endpoint === endpoints.listJobsForWorkflowRun) return jobs
+        if (endpoint === endpoints.listJobsForWorkflowRun) {
+          return Promise.resolve(jobs)
+        }
         if (endpoint === endpoints.listWorkflowRuns) {
-          return params.workflow_id === 'main-release.yml'
-            ? runs
-            : productionRuns
+          return Promise.resolve(
+            params.workflow_id === 'main-release.yml' ? runs : productionRuns,
+          )
         }
-        if (endpoint === endpoints.listDeployments) return deployments
+        if (endpoint === endpoints.listDeployments) {
+          return Promise.resolve(deployments)
+        }
         if (endpoint === endpoints.listDeploymentStatuses) {
-          return deploymentStatuses
+          return Promise.resolve(deploymentStatuses)
         }
-        if (endpoint === endpoints.listReleases) return releases
+        if (endpoint === endpoints.listReleases) {
+          return Promise.resolve(releases)
+        }
         throw new Error('unexpected endpoint')
       },
     ),
@@ -57,14 +63,16 @@ function mockGithub({
         listWorkflowRuns: endpoints.listWorkflowRuns,
       },
       git: {
-        getRef: vi.fn(async ({ ref }: { ref: string }) => {
+        getRef: vi.fn(({ ref }: { ref: string }) => {
           const sha = tagCommits[ref.replace(/^tags\//u, '')]
           if (!sha) throw new Error(`unknown tag ${ref}`)
-          return { data: { object: { sha, type: 'commit' } } }
+          return Promise.resolve({ data: { object: { sha, type: 'commit' } } })
         }),
       },
       repos: {
-        getBranch: vi.fn(async () => ({ data: { commit: { sha: mainSha } } })),
+        getBranch: vi.fn(() =>
+          Promise.resolve({ data: { commit: { sha: mainSha } } }),
+        ),
         listDeployments: endpoints.listDeployments,
         listDeploymentStatuses: endpoints.listDeploymentStatuses,
         listReleases: endpoints.listReleases,

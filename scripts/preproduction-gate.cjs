@@ -119,6 +119,5 @@ module.exports = {
   findGateRunWithPreproductionEvidence,
   isSuccessfulPreproductionJob,
   isTrustedReleaseCommit,
-  runHasPreproductionEvidence,
   verifyPreproductionGate,
 }

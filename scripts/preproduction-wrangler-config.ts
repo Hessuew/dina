@@ -1,5 +1,3 @@
-// fallow-ignore-file unused-file -- invoked by the main release gate pre-production job
-
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import {

@@ -40,10 +40,7 @@ export function buildEnrolmentSubmissionData(
 }
 
 export type EnrolmentKeyNavigation =
-  | 'next'
-  | 'next-prevent-default'
-  | 'back'
-  | 'none'
+  'next' | 'next-prevent-default' | 'back' | 'none'
 
 export function resolveEnrolmentKeyNavigation(
   key: string,

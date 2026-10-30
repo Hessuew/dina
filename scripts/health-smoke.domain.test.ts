@@ -123,9 +123,7 @@ describe('resolveHealthSmokeHeaders', () => {
 
 describe('resolveSmokeAccessHeaders', () => {
   it('builds the Cloudflare Access service token headers', () => {
-    expect(
-      resolveSmokeAccessHeaders(' client-id.access ', 'secret'),
-    ).toEqual({
+    expect(resolveSmokeAccessHeaders(' client-id.access ', 'secret')).toEqual({
       'CF-Access-Client-Id': 'client-id.access',
       'CF-Access-Client-Secret': 'secret',
     })
@@ -140,14 +138,11 @@ describe('resolveSmokeAccessHeaders', () => {
     [undefined, 'secret'],
     [' ', 'secret'],
     ['client-id.access', '  '],
-  ])(
-    'rejects a partial service token %j',
-    (clientId, clientSecret) => {
-      expect(() => resolveSmokeAccessHeaders(clientId, clientSecret)).toThrow(
-        /supplied together/u,
-      )
-    },
-  )
+  ])('rejects a partial service token %j', (clientId, clientSecret) => {
+    expect(() => resolveSmokeAccessHeaders(clientId, clientSecret)).toThrow(
+      /supplied together/u,
+    )
+  })
 })
 
 describe('validateVersionMetadataHeader', () => {
