@@ -1,6 +1,7 @@
 /**
  * Pure decision logic for the client-side root user-context cache.
- * The root route keeps the mutable entry; this module decides hits/misses.
+ * `root-user-context-cache.ts` keeps the mutable entry; this module decides
+ * hits/misses.
  */
 export type UserContextCacheEntry<T> = {
   user: T

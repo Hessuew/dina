@@ -36,6 +36,13 @@
     "babel-plugin-react-compiler",
     "test"
   ],
+  // These existing transitive security overrides are intentional and are
+  // validated by the frozen Bun lockfile rather than direct package usage.
+  "ignoreDependencyOverrides": [
+    { "package": "fast-uri", "source": "package.json" },
+    { "package": "hono", "source": "package.json" },
+    { "package": "ip-address", "source": "package.json" }
+  ],
   "ignorePatterns": [
     "test/integration/**",
     "scripts/linear-axi.mjs",

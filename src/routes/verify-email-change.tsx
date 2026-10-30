@@ -8,7 +8,7 @@ import {
   AuthLoadingState,
 } from '@/components/auth/auth-layout'
 import { verifyEmailChangeFn } from '@/utils/profile'
-import { clearRootUserContextCache } from '@/routes/__root'
+import { clearRootUserContextCache } from '@/utils/auth/root-user-context-cache'
 
 export const Route = createFileRoute('/verify-email-change')({
   validateSearch: (search: Record<string, unknown>) => ({

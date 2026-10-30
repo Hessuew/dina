@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { logoutService } from '@/utils/auth/logout'
-import { clearRootUserContextCache } from '@/routes/__root'
+import { clearRootUserContextCache } from '@/utils/auth/root-user-context-cache'
 
 const logoutFn = createServerFn().handler(async () => {
   const result = await logoutService()

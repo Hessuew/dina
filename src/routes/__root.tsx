@@ -4,22 +4,20 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useRouteContext,
 } from '@tanstack/react-router'
 
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
-import type { UserContextCacheEntry } from '@/utils/auth/domain/user-context-cache.domain'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
 import { seo } from '@/utils/seo'
 
-import { getRootUserContext } from '@/utils/auth/auth'
-import { readUserContextCache } from '@/utils/auth/domain/user-context-cache.domain'
+import { resolveUserContext } from '@/utils/auth/root-user-context-cache'
 import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
@@ -30,45 +28,6 @@ import {
   initializeAnalytics,
   resetAnalyticsUser,
 } from '@/utils/analytics'
-
-const fetchUser = createServerFn({ method: 'GET' }).handler(getRootUserContext)
-
-// Client-only cache: the server module scope is shared across requests.
-const USER_CONTEXT_TTL_MS = 60_000
-let cachedUserContext: UserContextCacheEntry<UserContext | null> | undefined
-let pendingUserContext: Promise<UserContext | null> | undefined
-let cacheEpoch = 0
-
-export function clearRootUserContextCache() {
-  cachedUserContext = undefined
-  cacheEpoch += 1
-}
-
-async function resolveUserContext(): Promise<UserContext | null> {
-  if (import.meta.env.SSR) return fetchUser()
-
-  const cached = readUserContextCache(
-    cachedUserContext,
-    Date.now(),
-    USER_CONTEXT_TTL_MS,
-  )
-  if (cached.hit) return cached.user
-  if (pendingUserContext) return pendingUserContext
-
-  const epoch = cacheEpoch
-  const fetchedAt = Date.now()
-  pendingUserContext = fetchUser()
-    .then((user) => {
-      if (epoch === cacheEpoch) {
-        cachedUserContext = { user, fetchedAt }
-      }
-      return user
-    })
-    .finally(() => {
-      pendingUserContext = undefined
-    })
-  return pendingUserContext
-}
 
 const LazyAppSidebar = React.lazy(() =>
   import('@/components/navigation/AppSidebar').then(({ AppSidebar }) => ({
@@ -162,9 +121,19 @@ function useAnalyticsUser(user: UserContext | null | undefined) {
   }, [user])
 }
 
+function RootSidebar({ user }: { user: UserContext | null }) {
+  if (!user) return null
+
+  return (
+    <React.Suspense fallback={null}>
+      <LazyAppSidebar user={user} role={user.role} />
+    </React.Suspense>
+  )
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext()
-  const role = user?.role || 'student'
+  const { user: contextUser } = useRouteContext({ strict: false })
+  const user = contextUser ?? null
 
   useSentryUser(user)
   useAnalyticsUser(user)
@@ -181,11 +150,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           enableKeyboardShortcut={Boolean(user)}
         >
           <TooltipProvider>
-            {user && (
-              <React.Suspense fallback={null}>
-                <LazyAppSidebar user={user} role={role} />
-              </React.Suspense>
-            )}
+            <RootSidebar user={user} />
             <SidebarInset>
               <Header user={user} />
               {children}
