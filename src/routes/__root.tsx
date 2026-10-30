@@ -164,7 +164,8 @@ function useAnalyticsUser(user: UserContext | null | undefined) {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = useRouteContext({ strict: false })
+  const { user: contextUser } = useRouteContext({ strict: false })
+  const user = contextUser ?? null
   const role = user?.role || 'student'
 
   useSentryUser(user)
