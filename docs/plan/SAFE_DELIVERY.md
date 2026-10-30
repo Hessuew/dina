@@ -50,7 +50,8 @@ account URLs remain external configuration and must never be committed.
 - After promotion, a protected release-evidence adapter must confirm the
   release tag/SHA/Worker version, source-map correlation, and alert delivery to
   Slack `#incidents` plus the documented email fallback. Missing or incomplete
-  evidence fails closed and triggers the same Worker rollback path.
+  evidence, or a failed GitHub Release/deployment publication, fails closed and
+  triggers the same Worker rollback path.
 - Tagged builds inject the release tag into browser/Worker observability and
   use the Sentry-compatible Vite source-map upload configuration. The workflow
   registers the release with Better Stack, verifies that source-map artifacts

@@ -40,12 +40,13 @@ safe to automate because Drizzle migrations may have changed production data.
 5. **Promotion is fail-closed without per-version metrics.** The
    protected metrics adapter must provide requests, errors, p95 latency, and
    release-correlated high-severity issue count for the exact Worker version.
-6. **Health or rollout guardrail failure rolls back only the Worker.** A
-   `/readyz` failure, unexpected error rate above 5% for five minutes, p95
-   latency above one second for five minutes, or new high-severity
-   release-correlated issue triggers deployment of the recorded previous Worker
-   version and a second smoke check. The database is never automatically
-   down-migrated; use a forward-fix migration or the approved restore runbook.
+6. **Health, rollout guardrail, or release publication failure rolls back only
+   the Worker.** A `/readyz` failure, unexpected error rate above 5% for five
+   minutes, p95 latency above one second for five minutes, a new high-severity
+   release-correlated issue, or a failed release-evidence/publication step
+   triggers deployment of the recorded previous Worker version and a second
+   smoke check. The database is never automatically down-migrated; use a
+   forward-fix migration or the approved restore runbook.
 7. **Version affinity is required at the Cloudflare zone edge.** The Worker
    issues a long-lived, non-sensitive `dina-version-key` cookie when one is
    absent. A `christ-dina.org` Request Header Transform Rule matches

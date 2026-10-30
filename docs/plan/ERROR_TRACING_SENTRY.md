@@ -15,7 +15,9 @@
   hardcoding the current provider account.
 - The production release workflow sets `VITE_APP_VERSION`,
   `VITE_SENTRY_RELEASE`, and `SENTRY_RELEASE` to the immutable release tag;
-  tagged Worker uploads include source maps before traffic promotion.
+  it uploads the tagged source maps to Better Stack, verifies they are
+  queryable, then deletes them from `dist/client` so the uploaded Worker
+  version never serves them as public assets.
 - Expected 4xx, router-control-flow, benign browser network TypeErrors (`Failed to fetch` / `Load failed` / Firefox NetworkError), dynamic-import load noise, and stale server-fn ID misses are suppressed by `shouldSuppressFromSentry()`.
 - When an OpenTelemetry span is active, `beforeSend` adds its `trace_id` and
   `span_id` to the event context so Better Stack Errors can link the exception
