@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 import { PREPRODUCTION_JOB_NAME } from './preproduction-gate.cjs'
@@ -137,6 +137,33 @@ describe('pre-production gate workflow semantics', () => {
     expect(journey?.env?.SMOKE_BASE_URL).toBe('${{ env.PREPRODUCTION_ORIGIN }}')
   })
 
+  it('authenticates both smoke surfaces through the scoped Access service token', async () => {
+    const { preproduction } = await readWorkflows()
+    const identity = stepByName(
+      preproduction,
+      'Validate pre-production isolation inputs',
+    )
+    const health = stepByName(
+      preproduction,
+      'Run pre-production health and readiness smoke',
+    )
+    const journey = stepByName(
+      preproduction,
+      'Run the agreed public journeys through pre-production',
+    )
+
+    for (const step of [identity, health, journey]) {
+      expect(step?.env?.PREPRODUCTION_ACCESS_CLIENT_ID).toBe(
+        '${{ secrets.PREPRODUCTION_ACCESS_CLIENT_ID }}',
+      )
+      expect(step?.env?.PREPRODUCTION_ACCESS_CLIENT_SECRET).toBe(
+        '${{ secrets.PREPRODUCTION_ACCESS_CLIENT_SECRET }}',
+      )
+    }
+    expect(identity?.run).toContain('PREPRODUCTION_ACCESS_CLIENT_ID')
+    expect(identity?.run).toContain('PREPRODUCTION_ACCESS_CLIENT_SECRET')
+  })
+
   it('never reuses production names, origins, or the production Supabase project', async () => {
     const { preproduction } = await readWorkflows()
     const identity = stepByName(
@@ -155,6 +182,22 @@ describe('pre-production gate workflow semantics', () => {
     expect(preproduction.env?.VITE_SUPABASE_URL).toBe(
       '${{ vars.VITE_SUPABASE_URL }}',
     )
+  })
+
+  it('never inherits production browser analytics or marketing trackers', async () => {
+    const { preproduction } = await readWorkflows()
+    const identity = stepByName(
+      preproduction,
+      'Validate pre-production isolation inputs',
+    )
+    const jobEnv = Object.keys(preproduction.env ?? {})
+
+    expect(jobEnv).not.toContain('VITE_GOOGLE_ADS_ID')
+    expect(jobEnv).not.toContain('VITE_META_PIXEL_ID')
+    expect(jobEnv).not.toContain('VITE_POSTHOG_KEY')
+    expect(jobEnv).not.toContain('VITE_POSTHOG_HOST')
+    expect(identity?.run).not.toContain('VITE_GOOGLE_ADS_ID')
+    expect(identity?.run).not.toContain('VITE_META_PIXEL_ID')
   })
 
   it('generates an isolated Wrangler config and serves the uploaded version directly', async () => {
@@ -206,13 +249,85 @@ describe('pre-production gate workflow semantics', () => {
     expect(journeyEnv.SMOKE_WORKER_NAME).toBe('${{ env.WORKER_NAME }}')
   })
 
-  it('ignores the generated pre-production config and keeps journey smoke env-driven', () => {
-    const gitignore = readFileSync('.gitignore', 'utf8')
-    expect(gitignore).toContain('wrangler.preproduction.generated.jsonc')
+  it('keeps the generated pre-production config ignored by git', async () => {
+    const env = {
+      ...process.env,
+      PREPRODUCTION_WORKER_NAME: 'christ-dina-preproduction',
+      PREPRODUCTION_HYPERDRIVE_ID: 'a'.repeat(32),
+    }
+    try {
+      await execFileAsync(
+        'bun',
+        ['run', 'scripts/preproduction-wrangler-config.ts'],
+        { env },
+      )
+      await execFileAsync('git', [
+        'check-ignore',
+        '-q',
+        'wrangler.preproduction.generated.jsonc',
+      ])
+    } finally {
+      await rm('wrangler.preproduction.generated.jsonc', { force: true })
+    }
+  })
 
-    const journey = readFileSync('scripts/release-journey-smoke.ts', 'utf8')
-    expect(journey).toContain("requiredEnv('SMOKE_BASE_URL')")
-    expect(journey).toContain("requiredEnv('SMOKE_JOURNEY_PATHS')")
-    expect(journey).not.toContain('PRODUCTION_JOURNEY_PATHS')
+  it('keeps the journey smoke on the shared env contract', async () => {
+    const env = smokeContractEnv()
+
+    const missingBaseUrl = await runJourneySmoke(env)
+    expect(missingBaseUrl).toContain('SMOKE_BASE_URL is required')
+
+    const missingJourneyPaths = await runJourneySmoke({
+      ...env,
+      SMOKE_BASE_URL: 'https://pre-production.invalid',
+      PRODUCTION_JOURNEY_PATHS: '/login',
+    })
+    expect(missingJourneyPaths).toContain('SMOKE_JOURNEY_PATHS is required')
+
+    const partialAccessToken = await runJourneySmoke({
+      ...env,
+      SMOKE_BASE_URL: 'https://pre-production.invalid',
+      SMOKE_JOURNEY_PATHS: '/login',
+      PREPRODUCTION_ACCESS_CLIENT_ID: 'client.access',
+    })
+    expect(partialAccessToken).toContain('must be supplied together')
   })
 })
+
+function smokeContractEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  for (const name of [
+    'SMOKE_BASE_URL',
+    'SMOKE_VERSION_ID',
+    'SMOKE_WORKER_NAME',
+    'SMOKE_EXPECTED_VERSION_ID',
+    'SMOKE_EXPECTED_RELEASE',
+    'SMOKE_JOURNEY_PATHS',
+    'PRODUCTION_JOURNEY_PATHS',
+    'PREPRODUCTION_ACCESS_CLIENT_ID',
+    'PREPRODUCTION_ACCESS_CLIENT_SECRET',
+  ]) {
+    delete env[name]
+  }
+  env.SMOKE_EXPECTED_VERSION_ID = 'version-123'
+  env.SMOKE_EXPECTED_RELEASE = 'pre-sha'
+  return env
+}
+
+async function runJourneySmoke(env: NodeJS.ProcessEnv): Promise<string> {
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      'bun',
+      ['run', 'scripts/release-journey-smoke.ts'],
+      { env },
+    )
+    return `${stdout}\n${stderr}`
+  } catch (error) {
+    const failure = error as {
+      stdout?: string
+      stderr?: string
+      message?: string
+    }
+    return `${failure.stdout ?? ''}\n${failure.stderr ?? ''}\n${failure.message ?? ''}`
+  }
+}

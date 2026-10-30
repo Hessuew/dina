@@ -130,11 +130,7 @@ jobs:
       WHATSAPP_API_VERSION: ${{ vars.WHATSAPP_API_VERSION || 'v21.0' }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-      VITE_GOOGLE_ADS_ID: ${{ vars.VITE_GOOGLE_ADS_ID }}
-      VITE_META_PIXEL_ID: ${{ vars.VITE_META_PIXEL_ID }}
       VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
-      VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
-      VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -146,15 +142,17 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PREPRODUCTION_ACCESS_CLIENT_ID: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_ID }}
+          PREPRODUCTION_ACCESS_CLIENT_SECRET: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_SECRET }}
         run: |
           for name in \
             PREPRODUCTION_WORKER_NAME PREPRODUCTION_ORIGIN \
             PREPRODUCTION_HYPERDRIVE_ID PREPRODUCTION_JOURNEY_PATHS \
             CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN \
+            PREPRODUCTION_ACCESS_CLIENT_ID PREPRODUCTION_ACCESS_CLIENT_SECRET \
             SUPABASE_PRODUCTION_PROJECT_REF SUPABASE_URL \
             RESEND_FROM WHATSAPP_PHONE_NUMBER_ID \
-            VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY \
-            VITE_GOOGLE_ADS_ID VITE_META_PIXEL_ID; do
+            VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
             if [[ -z "${!name}" ]]; then
               echo "$name is not configured for the pre-production environment"
               exit 1
@@ -234,6 +232,8 @@ jobs:
           SMOKE_BASE_URL: ${{ env.PREPRODUCTION_ORIGIN }}
           SMOKE_EXPECTED_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_EXPECTED_RELEASE: ${{ steps.identity.outputs.tag }}
+          PREPRODUCTION_ACCESS_CLIENT_ID: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_ID }}
+          PREPRODUCTION_ACCESS_CLIENT_SECRET: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_SECRET }}
         run: bun run scripts/retry-release-smoke.ts health
       - name: Run the agreed public journeys through pre-production
         env:
@@ -241,6 +241,8 @@ jobs:
           SMOKE_EXPECTED_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_EXPECTED_RELEASE: ${{ steps.identity.outputs.tag }}
           SMOKE_JOURNEY_PATHS: ${{ env.PREPRODUCTION_JOURNEY_PATHS }}
+          PREPRODUCTION_ACCESS_CLIENT_ID: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_ID }}
+          PREPRODUCTION_ACCESS_CLIENT_SECRET: ${{ secrets.PREPRODUCTION_ACCESS_CLIENT_SECRET }}
         run: bun run scripts/retry-release-smoke.ts journey
       - name: Record pre-production gate outcome
         if: always()

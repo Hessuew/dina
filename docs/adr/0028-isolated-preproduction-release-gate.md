@@ -37,17 +37,29 @@ production.
    `scripts/preproduction-wrangler-config.ts`: the Worker name becomes
    `christ-dina-preproduction`, the `christ-dina.org` custom-domain route is
    removed so only `workers.dev` serves, and the Hyperdrive binding is swapped
-   to the development-Supabase configuration id. The generator refuses the
-   production Worker name and the production Hyperdrive id. The job also
-   rejects a `PREPRODUCTION_ORIGIN` on `christ-dina.org` and any Supabase URL
-   that resolves to `SUPABASE_PRODUCTION_PROJECT_REF`.
+   to the development-Supabase configuration id. The generated config copies
+   only a safe allowlist (compatibility, main/assets, non-production vars,
+   observability, version metadata, workers.dev/preview) so shared production
+   bindings such as `analytics_engine_datasets`, queues, cron triggers,
+   durable objects, or service bindings can never reach the isolated Worker.
+   The generator refuses the production Worker name and the production
+   Hyperdrive id. The job also rejects a `PREPRODUCTION_ORIGIN` on
+   `christ-dina.org` and any Supabase URL that resolves to
+   `SUPABASE_PRODUCTION_PROJECT_REF`.
 4. **The uploaded version carries the gated SHA.** Each gate uploads a version
    tagged `pre-<full main SHA>` and serves it at 100%. Health/readiness smoke
    (`/healthz`, `/readyz`) and the agreed public journeys (`/login`,
    `/forgot-password`, `/reset-password` via `PREPRODUCTION_JOURNEY_PATHS`)
    require the served version id and the `pre-<sha>` release tag on the page
    and its hashed assets — the same checks production applies through the
-   version override, run directly against the workers.dev origin.
+   version override, run directly against the workers.dev origin. The isolated
+   origin sits behind a scoped Cloudflare Access application; both smoke
+   surfaces authenticate with the `PREPRODUCTION_ACCESS_CLIENT_ID`/
+   `PREPRODUCTION_ACCESS_CLIENT_SECRET` service-token pair as
+   `CF-Access-Client-Id`/`CF-Access-Client-Secret` headers and never log
+   either value. The preview build sets no `VITE_POSTHOG_*`, Google Ads, or
+   Meta Pixel configuration, so pre-production traffic emits no production
+   analytics or marketing events.
 5. **Production requires the evidence.** A
    `Verify pre-production gate evidence for the target SHA` step in
    `production-release.yml` runs before the release tag is created. For

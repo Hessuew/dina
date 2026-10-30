@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildEnrolmentSubmissionData,
+  buildEnrolmentTrackingScripts,
   resolveEnrolmentKeyNavigation,
   runEnrolmentSuccessEffects,
   validateEnrolmentYear,
@@ -134,6 +135,50 @@ describe('validateEnrolmentYear', () => {
   })
 })
 
+describe('buildEnrolmentTrackingScripts', () => {
+  it('emits the gtag loader, gtag config, and Meta pixel when both ids exist', () => {
+    const scripts = buildEnrolmentTrackingScripts({
+      googleAdsId: 'AW-123',
+      metaPixelId: 'pixel-1',
+    })
+
+    expect(scripts).toHaveLength(3)
+    expect(scripts[0]).toEqual({
+      src: 'https://www.googletagmanager.com/gtag/js?id=AW-123',
+      async: true,
+    })
+    expect(scripts[1]?.children).toContain("gtag('config', 'AW-123')")
+    expect(scripts[2]?.children).toContain("fbq('init', 'pixel-1')")
+    expect(scripts[2]?.children).toContain("fbq('track', 'PageView')")
+  })
+
+  it.each([
+    { googleAdsId: undefined, metaPixelId: undefined },
+    { googleAdsId: 'AW-123', metaPixelId: undefined },
+    { googleAdsId: undefined, metaPixelId: 'pixel-1' },
+  ])('emits only the scripts for configured ids: %o', (input) => {
+    const scripts = buildEnrolmentTrackingScripts(input)
+    const gtagScripts = scripts.filter((script) =>
+      (script.src ?? script.children ?? '').includes('gtag'),
+    )
+    const pixelScripts = scripts.filter((script) =>
+      (script.children ?? '').includes('fbq'),
+    )
+
+    expect(gtagScripts.length > 0).toBe(Boolean(input.googleAdsId))
+    expect(pixelScripts.length > 0).toBe(Boolean(input.metaPixelId))
+  })
+
+  it('emits no tracking scripts when the marketing ids are unset', () => {
+    expect(
+      buildEnrolmentTrackingScripts({
+        googleAdsId: undefined,
+        metaPixelId: undefined,
+      }),
+    ).toEqual([])
+  })
+})
+
 describe('runEnrolmentSuccessEffects', () => {
   it('does nothing when success is falsy', () => {
     const onSubmitted = vi.fn()
@@ -203,6 +248,22 @@ describe('runEnrolmentSuccessEffects', () => {
       value: 1.0,
       currency: 'EUR',
     })
+  })
+
+  it('skips the gtag conversion when no ads id is configured', () => {
+    const gtag = vi.fn()
+    const navigate = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: { gtag },
+      googleAdsId: undefined,
+      onSubmitted: vi.fn(),
+      navigate,
+    })
+
+    expect(gtag).not.toHaveBeenCalled()
+    expect(navigate).toHaveBeenCalledOnce()
   })
 
   it('fires the fbq Lead event', () => {

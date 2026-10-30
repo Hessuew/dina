@@ -32,7 +32,8 @@ This folder defines:
   - `/enrolment` - Enrolment form with Google Ads conversion tracking
     - On successful submission, navigates to `/enrolment?success=true`
     - Google tag loads on page load; conversion event fires when `success=true`
-    - Tracking ID configured via `VITE_GOOGLE_ADS_ID` environment variable
+    - Tracking IDs configured via optional `VITE_GOOGLE_ADS_ID` and
+      `VITE_META_PIXEL_ID`; trackers are omitted when unset (preview builds)
 
 - **API-style routes**
   - Some files may implement server-side endpoints using route files (e.g. upload routes).

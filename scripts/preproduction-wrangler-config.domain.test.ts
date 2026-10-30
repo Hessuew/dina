@@ -67,6 +67,65 @@ describe('buildPreproductionWranglerConfig', () => {
     expect(config).not.toHaveProperty('env')
   })
 
+  it('keeps only the safe allowlist and drops shared side-effect bindings', () => {
+    const config = buildPreproductionWranglerConfig(
+      {
+        ...baseConfig(),
+        compatibility_flags: ['nodejs_compat'],
+        observability: { enabled: true },
+        $schema: 'node_modules/wrangler/config-schema.json',
+        analytics_engine_datasets: [
+          { binding: 'RELEASE_METRICS', dataset: 'dina_release_metrics' },
+        ],
+        queues: {
+          producers: [{ binding: 'RELEASE_QUEUE', queue: 'release-queue' }],
+          consumers: [{ queue: 'release-queue' }],
+        },
+        triggers: { crons: ['0 * * * *'] },
+        durable_objects: {
+          bindings: [{ name: 'COUNTER', class_name: 'Counter' }],
+        },
+        services: [{ binding: 'INTERNAL', service: 'christ-dina-internal' }],
+        kv_namespaces: [{ binding: 'KV', id: 'a'.repeat(32) }],
+        env: { staging: { name: 'christ-dina-staging' } },
+      },
+      options(),
+    )
+
+    expect(Object.keys(config).sort()).toEqual([
+      'assets',
+      'compatibility_date',
+      'compatibility_flags',
+      'hyperdrive',
+      'main',
+      'name',
+      'observability',
+      'preview_urls',
+      'vars',
+      'version_metadata',
+      'workers_dev',
+    ])
+    expect(config.vars).toEqual(baseConfig().vars)
+  })
+
+  it('strips the shared production metrics dataset from the repository config', () => {
+    const text = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8')
+    const config = buildPreproductionWranglerConfig(
+      parseWranglerConfig(text),
+      options(),
+    )
+
+    expect(config).not.toHaveProperty('analytics_engine_datasets')
+    expect(config).not.toHaveProperty('routes')
+    expect(config).not.toHaveProperty('env')
+    expect(config.hyperdrive).toEqual([
+      { binding: 'HYPERDRIVE', id: DEVELOPMENT_HYPERDRIVE_ID },
+    ])
+    expect(config.observability).toEqual(
+      parseWranglerConfig(text).observability,
+    )
+  })
+
   it.each<Record<string, string>>([
     { workerName: 'christ-dina' },
     { workerName: 'CHRIST-DINA-PREPRODUCTION' },

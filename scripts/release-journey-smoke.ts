@@ -5,7 +5,10 @@ import {
   resolveHealthSmokeUrl,
   validateSmokeResponseOrigin,
 } from './health-smoke.domain'
-import { resolveHealthSmokeHeaders } from './health-smoke.version.domain'
+import {
+  resolveHealthSmokeHeaders,
+  resolveSmokeAccessHeaders,
+} from './health-smoke.version.domain'
 import {
   extractFirstPartyAssetUrls,
   parseJourneyPaths,
@@ -21,10 +24,13 @@ if (!expectedVersionId) {
 }
 const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
 const paths = parseJourneyPaths(requiredEnv('SMOKE_JOURNEY_PATHS'))
-const versionSmokeHeaders = resolveHealthSmokeHeaders(
-  versionOverrideId,
-  workerName,
-)
+const versionSmokeHeaders = {
+  ...resolveHealthSmokeHeaders(versionOverrideId, workerName),
+  ...resolveSmokeAccessHeaders(
+    optionalEnv('PREPRODUCTION_ACCESS_CLIENT_ID'),
+    optionalEnv('PREPRODUCTION_ACCESS_CLIENT_SECRET'),
+  ),
+}
 
 for (const path of paths) {
   const url = new URL(path, origin)

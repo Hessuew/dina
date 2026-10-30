@@ -81,6 +81,11 @@ Required values:
 | pre-production | Variable | `PREPRODUCTION_HYPERDRIVE_ID` |
 | pre-production | Variable | `PREPRODUCTION_JOURNEY_PATHS` |
 
+The gate job also resolves `SUPABASE_PRODUCTION_PROJECT_REF` from repository
+scope — the same non-secret production project ref the `development`
+environment uses — as its isolation tripwire. It must stay non-empty so the
+job can reject Supabase URLs that resolve to the production project.
+
 The pre-production Worker's `SUPABASE_SERVICE_ROLE_KEY` is a Cloudflare Worker
 secret on `christ-dina-preproduction`, never a GitHub value. Its Hyperdrive
 binding (`PREPRODUCTION_HYPERDRIVE_ID`, currently

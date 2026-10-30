@@ -40,9 +40,13 @@ account URLs remain external configuration and must never be committed.
   the gated commit to the isolated `christ-dina-preproduction` Worker on
   `workers.dev`, bound to a development-only Hyperdrive, then requires the
   exact-version health/readiness smoke and the agreed public journeys
-  (`/login`, `/forgot-password`, `/reset-password`) to pass. The job is
-  skipped until the protected `PREPRODUCTION_GATE_ENABLED` variable is `true`;
-  production still fails closed without its evidence.
+  (`/login`, `/forgot-password`, `/reset-password`) to pass. The isolated
+  origin sits behind a scoped Cloudflare Access application; both smoke
+  surfaces authenticate with the `PREPRODUCTION_ACCESS_CLIENT_ID`/
+  `PREPRODUCTION_ACCESS_CLIENT_SECRET` service-token pair as
+  `CF-Access-Client-Id`/`CF-Access-Client-Secret` headers and never log them.
+  The job is skipped until the protected `PREPRODUCTION_GATE_ENABLED`
+  variable is `true`; production still fails closed without its evidence.
 - `.github/workflows/production-release.yml` is triggered by a successful
   `Main release gate` on `main`, or manually with a full `target_sha` and
   `standard`/`gradual` profile. It creates a never-reused tag such as
@@ -251,6 +255,10 @@ completed in the external systems before Phase 3 is considered operational:
   `PREPRODUCTION_HYPERDRIVE_ID`, `PREPRODUCTION_ORIGIN`, and
   `PREPRODUCTION_JOURNEY_PATHS`, and resume the development project only when
   a gate run should go green;
+- create the scoped Cloudflare Access application and service token for the
+  `christ-dina-preproduction` `workers.dev` hostname, and set
+  `PREPRODUCTION_ACCESS_CLIENT_ID` and `PREPRODUCTION_ACCESS_CLIENT_SECRET`
+  in the `pre-production` environment;
 - set the protected `PREPRODUCTION_GATE_ENABLED=true` once the pre-production
   gate is proven on a reviewed main push;
 - protect `main` with pull request, quality-gate, and no-force-push rules;

@@ -6,6 +6,7 @@ import {
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,
+  resolveSmokeAccessHeaders,
   validateExpectedReleasePayload,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
@@ -103,10 +104,16 @@ async function main(): Promise<void> {
     process.argv[2] ?? process.env.SMOKE_BASE_URL,
   )
   const timeoutMs = resolveTimeout(process.env.SMOKE_TIMEOUT_MS)
-  const headers = resolveHealthSmokeHeaders(
-    process.env.SMOKE_VERSION_ID,
-    process.env.SMOKE_WORKER_NAME,
-  )
+  const headers = {
+    ...resolveHealthSmokeHeaders(
+      process.env.SMOKE_VERSION_ID,
+      process.env.SMOKE_WORKER_NAME,
+    ),
+    ...resolveSmokeAccessHeaders(
+      process.env.PREPRODUCTION_ACCESS_CLIENT_ID,
+      process.env.PREPRODUCTION_ACCESS_CLIENT_SECRET,
+    ),
+  }
   const expectedVersionId =
     process.env.SMOKE_EXPECTED_VERSION_ID?.trim() ||
     process.env.SMOKE_VERSION_ID

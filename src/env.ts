@@ -25,8 +25,8 @@ export const env = createEnv({
   client: {
     VITE_SUPABASE_URL: z.url(),
     VITE_SUPABASE_ANON_KEY: z.string().min(1),
-    VITE_GOOGLE_ADS_ID: z.string().min(1),
-    VITE_META_PIXEL_ID: z.string().min(1),
+    VITE_GOOGLE_ADS_ID: z.string().min(1).optional(),
+    VITE_META_PIXEL_ID: z.string().min(1).optional(),
     VITE_BETTER_STACK_DSN: z.url().optional(),
     VITE_SENTRY_DSN: z.url().optional(),
     VITE_POSTHOG_KEY: z.string().min(1).optional(),

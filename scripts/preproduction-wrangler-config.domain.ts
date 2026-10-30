@@ -10,6 +10,17 @@ export type PreproductionConfigOptions = {
 const WORKER_NAME_PATTERN = /^[a-z0-9-]{1,63}$/u
 const HYPERDRIVE_ID_PATTERN = /^[0-9a-f]{32}$/iu
 const PRODUCTION_WORKER_NAME = 'christ-dina'
+const SAFE_CONFIG_KEYS = [
+  'compatibility_date',
+  'compatibility_flags',
+  'main',
+  'assets',
+  'vars',
+  'observability',
+  'version_metadata',
+  'workers_dev',
+  'preview_urls',
+] as const
 
 export function parseWranglerConfig(text: string): WranglerConfig {
   const parsed = ts.parseConfigFileTextToJson('wrangler.jsonc', text)
@@ -27,14 +38,15 @@ export function buildPreproductionWranglerConfig(
   const hyperdriveId = options.hyperdriveId.trim()
   validatePreproductionIdentity(base, workerName, hyperdriveId)
 
-  const config: WranglerConfig = { ...base, name: workerName }
-  delete config.routes
-  delete config.env
-
   const hyperdrive = Array.isArray(base.hyperdrive) ? base.hyperdrive : []
   const binding = hyperdrive[0]
   if (typeof binding !== 'object' || !binding) {
     throw new Error('wrangler.jsonc has no Hyperdrive binding to isolate')
+  }
+
+  const config: WranglerConfig = { name: workerName }
+  for (const key of SAFE_CONFIG_KEYS) {
+    if (base[key] !== undefined) config[key] = base[key]
   }
   config.hyperdrive = [{ ...binding, id: hyperdriveId }]
   return config

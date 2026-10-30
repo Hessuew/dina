@@ -19,6 +19,24 @@ export function resolveHealthSmokeHeaders(
   }
 }
 
+export function resolveSmokeAccessHeaders(
+  clientId: string | undefined,
+  clientSecret: string | undefined,
+): HealthSmokeHeaders {
+  const normalizedClientId = clientId?.trim()
+  const normalizedClientSecret = clientSecret?.trim()
+  if (!normalizedClientId && !normalizedClientSecret) return {}
+  if (!normalizedClientId || !normalizedClientSecret) {
+    throw new Error(
+      'PREPRODUCTION_ACCESS_CLIENT_ID and PREPRODUCTION_ACCESS_CLIENT_SECRET must be supplied together',
+    )
+  }
+  return {
+    'CF-Access-Client-Id': normalizedClientId,
+    'CF-Access-Client-Secret': normalizedClientSecret,
+  }
+}
+
 export function validateVersionMetadataHeader(
   expectedVersionId: string | undefined,
   actualVersionId: string | null,
