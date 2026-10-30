@@ -92,7 +92,9 @@ account URLs remain external configuration and must never be committed.
   `bun run smoke:health -- https://<deployment-origin>`.
   It requires HTTP 200, a healthy `christ-dina` payload, and database readiness
   on `/readyz`; use `SMOKE_BASE_URL` instead of the positional URL in CI or a
-  deployment shell. It never logs the base URL or sends credentials.
+  deployment shell. It never logs the base URL and sends no credentials unless
+  the `PREPRODUCTION_ACCESS_CLIENT_ID`/`PREPRODUCTION_ACCESS_CLIENT_SECRET`
+  pair described above is set for the isolated origin.
 - `.github/workflows/post-deploy-smoke.yml` exposes the same check as a
   credential-free GitHub Actions workflow. Run it manually from Actions with
   the deployment origin, or call it from a deployment workflow with

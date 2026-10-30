@@ -169,8 +169,10 @@ bun run quality:release  # gate + integration + production build; main CI only
 
 Safe documentation-only diffs run only the static lane. Pull requests use the stable required
 check `Fast quality gate` and cancel superseded runs for the same PR. Pushes to `main` run one
-complete `Main release gate` at a time without cancelling older pushes, then migrate and seed
-the development database only when `drizzle/**` changed. Credentialed Playwright E2E stays
+complete `Main release gate` at a time without cancelling older pushes; dependent jobs then
+migrate and seed the development database only when `drizzle/**` changed and deploy and smoke
+the isolated pre-production Worker once `PREPRODUCTION_GATE_ENABLED` is set (ADR 0028).
+Credentialed Playwright E2E stays
 manual and implementation-scoped. The health smoke command is safe to run against a public
 deployment origin and does not replace authenticated journey checks.
 
