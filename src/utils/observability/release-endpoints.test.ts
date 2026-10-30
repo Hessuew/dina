@@ -232,10 +232,10 @@ describe('release evidence endpoint', () => {
         expect(requestUrl.searchParams.get('version')).toBe(metadata.tag)
         expect(requestUrl.searchParams.get('environment')).toBe('production')
         expect(init?.headers?.authorization).toBe('Bearer telemetry-token')
-        return new Response(
-          JSON.stringify({ data: [reportedRelease()] }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )
+        return new Response(JSON.stringify({ data: [reportedRelease()] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
       },
     )
     vi.stubGlobal('fetch', fetchSpy)
