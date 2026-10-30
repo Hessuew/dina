@@ -5,7 +5,10 @@ type CloudflareEnvelope<T> = {
 }
 
 type ServiceMetadata = {
-  default_environment?: { environment?: string }
+  default_environment?: {
+    environment?: string
+    script?: { last_deployed_from?: string }
+  }
 }
 
 type CheckOptions = {
@@ -52,14 +55,39 @@ export async function checkPreproductionWorkerMetadata({
   const service = await check<ServiceMetadata>('service', servicePath)
   if (!service.ok) return false
 
-  const environment = service.result?.default_environment?.environment
+  const defaultEnvironment = service.result?.default_environment
+  if (!defaultEnvironment) {
+    write('service: default environment was missing')
+    return false
+  }
+
+  const scriptPath = `/workers/scripts/${encodeURIComponent(workerName)}`
+  const results = await Promise.all([
+    check('secrets', `${scriptPath}/secrets`),
+    check('versions', `${scriptPath}/versions?deployable=true`),
+    check('deployments', `${scriptPath}/deployments`),
+    check(
+      'worker-subdomain',
+      `/workers/workers/${encodeURIComponent(workerName)}`,
+    ),
+  ])
+
+  const lastDeployedFrom = defaultEnvironment.script?.last_deployed_from
+  if (lastDeployedFrom !== 'dash') {
+    write(
+      `service: remote worker config surfaces skipped (last_deployed_from: ${lastDeployedFrom ?? 'missing'})`,
+    )
+    return results.every((result) => result.ok)
+  }
+
+  const environment = defaultEnvironment.environment
   if (!environment) {
     write('service: default environment was missing')
     return false
   }
 
   const environmentPath = `${servicePath}/environments/${encodeURIComponent(environment)}`
-  const results = await Promise.all([
+  const configResults = await Promise.all([
     check('bindings', `${environmentPath}/bindings`),
     check('routes', `${environmentPath}/routes?show_zonename=true`),
     check(
@@ -68,13 +96,13 @@ export async function checkPreproductionWorkerMetadata({
     ),
     check('subdomain', `${environmentPath}/subdomain`),
     check('environment', environmentPath),
-    check(
-      'schedules',
-      `/workers/scripts/${encodeURIComponent(workerName)}/schedules`,
-    ),
+    check('schedules', `${scriptPath}/schedules`),
   ])
 
-  return results.every((result) => result.ok)
+  return (
+    results.every((result) => result.ok) &&
+    configResults.every((result) => result.ok)
+  )
 }
 
 if (import.meta.main) {
