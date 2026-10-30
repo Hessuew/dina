@@ -216,9 +216,7 @@ describe('pre-production gate workflow semantics', () => {
     const jobEnv = Object.keys(preproduction.env ?? {})
 
     expect(preproduction.env?.WHATSAPP_ENABLED).toBe('false')
-    expect(upload?.run).toContain(
-      '--var "WHATSAPP_ENABLED:$WHATSAPP_ENABLED"',
-    )
+    expect(upload?.run).toContain('--var "WHATSAPP_ENABLED:$WHATSAPP_ENABLED"')
     for (const credential of [
       'WHATSAPP_ACCESS_TOKEN',
       'WHATSAPP_PHONE_NUMBER_ID',
