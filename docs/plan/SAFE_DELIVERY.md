@@ -38,7 +38,9 @@ account URLs remain external configuration and must never be committed.
   reviewed main release without creating a no-op migration.
 - The same gate's `Deploy and verify pre-production` job (ADR 0028) deploys
   the gated commit to the isolated `christ-dina-preproduction` Worker on
-  `workers.dev`, bound to a development-only Hyperdrive, then requires the
+  `workers.dev`, bound to a development-only Hyperdrive, after a read-only
+  Cloudflare metadata check proves the deployment token can read the
+  surfaces Wrangler needs, then requires the
   exact-version health/readiness smoke and the agreed public journeys
   (`/login`, `/forgot-password`, `/reset-password`) to pass. The isolated
   origin sits behind a scoped Cloudflare Access application; both smoke

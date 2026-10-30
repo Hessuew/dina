@@ -45,7 +45,14 @@ production.
    The generator refuses the production Worker name and the production
    Hyperdrive id. The job also rejects a `PREPRODUCTION_ORIGIN` on
    `christ-dina.org` and any Supabase URL that resolves to
-   `SUPABASE_PRODUCTION_PROJECT_REF`.
+   `SUPABASE_PRODUCTION_PROJECT_REF`. Before generating the config, a
+   `Check pre-production Worker metadata access` step
+   (`scripts/preproduction-worker-metadata-check.ts`) re-runs — read-only —
+   the Worker metadata fetches `wrangler versions upload` performs and
+   reports only the endpoint label, HTTP status, and Cloudflare error codes.
+   Any failed surface fails the job before upload, so a missing token
+   permission surfaces as a labeled read failure instead of an opaque
+   Wrangler error.
 4. **The uploaded version carries the gated SHA.** Each gate uploads a version
    tagged `pre-<full main SHA>` and serves it at 100%. Health/readiness smoke
    (`/healthz`, `/readyz`) and the agreed public journeys (`/login`,

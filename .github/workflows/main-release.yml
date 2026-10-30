@@ -177,6 +177,12 @@ jobs:
           target_sha=$(git rev-parse HEAD)
           echo "tag=pre-$target_sha" >> "$GITHUB_OUTPUT"
           echo "target_sha=$target_sha" >> "$GITHUB_OUTPUT"
+      - name: Check pre-production Worker metadata access
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREPRODUCTION_WORKER_NAME: ${{ env.PREPRODUCTION_WORKER_NAME }}
+        run: bun scripts/preproduction-worker-metadata-check.ts
       - name: Generate the isolated pre-production Worker config
         run: bun run scripts/preproduction-wrangler-config.ts
       - name: Build the pre-production artifact

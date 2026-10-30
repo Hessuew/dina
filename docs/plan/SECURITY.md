@@ -208,8 +208,11 @@ The shadcn Model Context Protocol toolchain previously retained
 `undici@7.28.0`, which was affected by the high-severity private-cache-directive
 advisory. A lockfile-only dependency refresh now resolves only the compatible
 shadcn branch to `undici@7.29.0`. The Cloudflare Miniflare branch already used
-`7.29.0`, while jsdom retains its separate `undici@8.10.2` branch, so no
-incompatible global override is needed.
+`7.29.0`, while jsdom retains its separate `undici@8.12.3` branch, so no
+incompatible global override is needed. The resolved `undici@8.12.3` is
+patched at install time (`patches/undici@8.12.3.patch`) so its zstd
+decompression registration tolerates Node builds without
+`createZstdDecompress`.
 
 This is a development-only tooling remediation and does not change application
 runtime behavior. The local high-severity audit baseline is now clear; the
